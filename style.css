@@ -73,6 +73,7 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 .big-btn.secondary { background: #f0edff; color: #7c5cff; box-shadow: none; margin-top: 12px; font-size: 1.2rem; padding: 14px; }
 
 .hint { text-align: center; color: #9a95c0; font-size: .9rem; min-height: 1.2em; margin: 12px 0 0; }
+.version { text-align: center; color: #c5c0e8; font-size: .8rem; font-weight: 600; margin: 6px 0 0; }
 
 /* ============ quiz ============ */
 .quiz-wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; height: 100%; max-height: 860px; }

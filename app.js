@@ -1,5 +1,7 @@
 "use strict";
 
+const APP_VERSION = "1.0.0";
+
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500];
 const COUNT_OPTIONS = [5, 10, 15, 20];
@@ -871,6 +873,7 @@ $("btn-settings").onclick = () => showScreen("setup");
 buildSetup();
 applyLang();
 refreshSetup();
+$("app-version").textContent = "v" + APP_VERSION;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
