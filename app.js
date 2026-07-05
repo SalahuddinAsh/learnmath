@@ -7,7 +7,6 @@ const AGE_OPTIONS = [4, 5, 6, 7];
 const RANGE_BY_AGE = { 4: 5, 5: 10, 6: 15, 7: 20 };
 const KG_SHAPES_MAX = 10;                 // shapes stay countable
 const TABLE_MIN = 1, TABLE_MAX = 12;
-const MARATHON_MAX_FACTOR = 10;           // times tables run ×1 … ×10
 const WEAK_BIAS = 0.4;                    // chance a ×/÷ question is drawn from saved weak facts
 const EMOJIS = ["🍎", "⭐", "🎈", "🐟", "🦋", "🍓", "⚽", "🐥"];
 
@@ -42,6 +41,7 @@ const STRINGS = {
     kgTimer: "Timer", timerOn: "⏱️ On", timerOff: "🚫 Off",
     range: "Biggest answer (+ / −)",
     tables: "Numbers to practice (× / ÷)",
+    factorMax: "Multiplication up to",
     tablesNote: "All questions in order: ×1 … ×10, then extra practice for tricky ones",
     timeLevel: "Clock difficulty",
     level1: "Easy: 00 · 15 · 30 · 45", level2: "Every 5 minutes",
@@ -79,6 +79,7 @@ const STRINGS = {
     kgTimer: "المؤقت", timerOn: "⏱️ يعمل", timerOff: "🚫 بدون",
     range: "أكبر ناتج (+ / −)",
     tables: "أرقام التدريب (× / ÷)",
+    factorMax: "جدول الضرب حتى",
     tablesNote: "كل الأسئلة بالترتيب: ×1 … ×10، ثم تدريب إضافي على الأسئلة الصعبة",
     timeLevel: "مستوى الساعة",
     level1: "سهل: 00 · 15 · 30 · 45", level2: "كل 5 دقائق",
@@ -116,6 +117,7 @@ const STRINGS = {
     kgTimer: "Zeitlimit", timerOn: "⏱️ An", timerOff: "🚫 Aus",
     range: "Größtes Ergebnis (+ / −)",
     tables: "Zahlen zum Üben (× / ÷)",
+    factorMax: "Einmaleins bis",
     tablesNote: "Alle Aufgaben der Reihe nach: ×1 … ×10, dann Extra-Übung für knifflige",
     timeLevel: "Uhr-Schwierigkeit",
     level1: "Leicht: 00 · 15 · 30 · 45", level2: "Alle 5 Minuten",
@@ -147,7 +149,7 @@ const STRINGS = {
 /* ================= settings ================= */
 const DEFAULTS = {
   lang: "en", mode: "test",
-  ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10,
+  ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
   kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true,
   sound: true,
@@ -167,6 +169,7 @@ function loadSettings() {
       range: RANGE_OPTIONS.includes(s.range) ? s.range : DEFAULTS.range,
       tables: Array.isArray(s.tables) ? s.tables.filter(n => n >= TABLE_MIN && n <= TABLE_MAX) : [...DEFAULTS.tables],
       count: COUNT_OPTIONS.includes(s.count) ? s.count : DEFAULTS.count,
+      factorMax: s.factorMax === 12 ? 12 : 10,
       timeLevel: s.timeLevel === 2 ? 2 : 1,
       clock24: s.clock24 === true,
       timeInput: s.timeInput === "pick" ? "pick" : "type",
@@ -244,7 +247,7 @@ function weakToQuestion(key, cfg) {
   if (m) {
     const n = +m[1], k = +m[2];
     const ops = ["mul", "div"].filter(o => cfg.ops.includes(o));
-    if (!ops.length || !cfg.tables.includes(n)) return null;
+    if (!ops.length || !cfg.tables.includes(n) || k > (cfg.factorMax || TABLE_MAX)) return null;
     if (pick(ops) === "mul") {
       const [a, b] = Math.random() < 0.5 ? [n, k] : [k, n];
       return { op: "mul", a, b, fa: n, fb: k, answer: a * b };
@@ -314,9 +317,9 @@ function makeOne(op, cfg) {
     const b = rand(1, a - 1);
     return { op, a, b, answer: a - b };
   }
-  // mul/div are built from a times-table fact: n (chosen table) × k (1–12)
+  // mul/div are built from a times-table fact: n (chosen table) × k (1–factorMax)
   const n = pick(cfg.tables);
-  const k = rand(TABLE_MIN, TABLE_MAX);
+  const k = rand(TABLE_MIN, cfg.factorMax || TABLE_MAX);
   if (op === "mul") {
     const [a, b] = Math.random() < 0.5 ? [n, k] : [k, n];
     return { op, a, b, fa: n, fb: k, answer: a * b };
@@ -471,6 +474,9 @@ function buildSetup() {
   document.querySelectorAll("#qformat-row .chip").forEach(chip => {
     chip.onclick = () => { settings.qFormat = chip.dataset.qformat; refreshSetup(); };
   });
+  document.querySelectorAll("#factor-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.factorMax = +chip.dataset.factor; refreshSetup(); };
+  });
   document.querySelectorAll(".lang-chip:not(.sound-btn)").forEach(chip => {
     chip.onclick = () => { settings.lang = chip.dataset.lang; applyLang(); refreshSetup(); };
   });
@@ -496,6 +502,7 @@ function refreshSetup() {
   $("kgtimer-group").hidden = !kg;
   $("range-group").hidden = !needsRange;
   $("tables-group").hidden = !needsTables;
+  $("factor-group").hidden = !needsTables;
   $("tables-note").hidden = !marathon;
   $("timelevel-group").hidden = !needsTimeLevel;
   $("clockmode-group").hidden = !needsTimeLevel;
@@ -522,6 +529,7 @@ function refreshSetup() {
   document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.clock24 === "1") === settings.clock24));
   document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
   document.querySelectorAll("#qformat-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.qformat === settings.qFormat));
+  document.querySelectorAll("#factor-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.factor === settings.factorMax));
 
   let hint = "";
   if (!marathon && activeOps.length === 0) hint = T().hintOps;
@@ -543,6 +551,7 @@ function applyLang() {
   $("t-kgtimer").textContent = t.kgTimer;
   $("t-range").textContent = t.range;
   $("t-tables").textContent = t.tables;
+  $("t-factor").textContent = t.factorMax;
   $("tables-note").textContent = t.tablesNote;
   $("t-timelevel").textContent = t.timeLevel;
   $("t-clockmode").textContent = t.clockMode;
@@ -567,16 +576,17 @@ function showScreen(name) {
 
 function buildQuestions() {
   if (settings.mode === "tables") {
-    // the whole selected tables in order: n×1 … n×10, then this pool's weak facts again
+    // the whole selected tables in order: n×1 … n×factorMax, then this pool's weak facts again
+    const fmax = settings.factorMax;
     const tables = [...settings.tables].sort((x, y) => x - y);
     const questions = [];
     for (const n of tables) {
-      for (let k = 1; k <= MARATHON_MAX_FACTOR; k++) {
+      for (let k = 1; k <= fmax; k++) {
         questions.push({ op: "mul", a: n, b: k, fa: n, fb: k, answer: n * k });
       }
     }
     for (const [n, k] of [...new Set(weakPool(tables).map(f => f.join("x")))].map(s => s.split("x").map(Number))) {
-      if (k <= MARATHON_MAX_FACTOR) questions.push({ op: "mul", a: n, b: k, fa: n, fb: k, answer: n * k });
+      if (k <= fmax) questions.push({ op: "mul", a: n, b: k, fa: n, fb: k, answer: n * k });
     }
     return questions;
   }
@@ -601,6 +611,7 @@ function buildQuestions() {
     ops: [...settings.ops],
     range: settings.range,
     tables: [...settings.tables].sort((x, y) => x - y),
+    factorMax: settings.factorMax,
     timeLevel: settings.timeLevel,
     clock24: settings.clock24,
     qFormat: settings.qFormat,
