@@ -39,6 +39,7 @@ const STRINGS = {
     age: "Age",
     style: "Show questions with", shapes: "Shapes", digits: "Digits",
     kgTimer: "Timer", timerOn: "⏱️ On", timerOff: "🚫 Off",
+    kgSize: "Shape size", sizeS: "Small", sizeM: "Medium", sizeL: "Large",
     range: "Biggest answer (+ / −)",
     tables: "Numbers to practice (× / ÷)",
     factorMax: "Multiplication up to",
@@ -77,6 +78,7 @@ const STRINGS = {
     age: "العمر",
     style: "شكل الأسئلة", shapes: "أشكال", digits: "أرقام",
     kgTimer: "المؤقت", timerOn: "⏱️ يعمل", timerOff: "🚫 بدون",
+    kgSize: "حجم الأشكال", sizeS: "صغير", sizeM: "وسط", sizeL: "كبير",
     range: "أكبر ناتج (+ / −)",
     tables: "أرقام التدريب (× / ÷)",
     factorMax: "جدول الضرب حتى",
@@ -115,6 +117,7 @@ const STRINGS = {
     age: "Alter",
     style: "Aufgaben zeigen mit", shapes: "Bildern", digits: "Zahlen",
     kgTimer: "Zeitlimit", timerOn: "⏱️ An", timerOff: "🚫 Aus",
+    kgSize: "Größe der Bilder", sizeS: "Klein", sizeM: "Mittel", sizeL: "Groß",
     range: "Größtes Ergebnis (+ / −)",
     tables: "Zahlen zum Üben (× / ÷)",
     factorMax: "Einmaleins bis",
@@ -151,7 +154,7 @@ const DEFAULTS = {
   lang: "en", mode: "test",
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
-  kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true,
+  kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
   sound: true,
 };
 let settings = loadSettings();
@@ -178,6 +181,7 @@ function loadSettings() {
       kgOps: kgOps.length ? kgOps : [...DEFAULTS.kgOps],
       kgStyle: s.kgStyle === "digits" ? "digits" : "shapes",
       kgTimer: s.kgTimer !== false,
+      kgSize: ["s", "m", "l"].includes(s.kgSize) ? s.kgSize : DEFAULTS.kgSize,
       sound: s.sound !== false,
     };
   } catch { return { ...DEFAULTS }; }
@@ -353,7 +357,7 @@ function shapesHTML(q) {
     `<div class="shape-group" style="grid-template-columns: repeat(${Math.min(n, 5)}, auto)">` +
     Array.from({ length: n }, () => `<span>${q.emoji}</span>`).join("") +
     `</div>`;
-  return `<div class="shape-q">${group(q.a)}<div class="shape-op">${OP_SYMBOL[q.op]}</div>${group(q.b)}<div class="shape-op">= ?</div></div>`;
+  return `<div class="shape-q size-${settings.kgSize}">${group(q.a)}<div class="shape-op">${OP_SYMBOL[q.op]}</div>${group(q.b)}<div class="shape-op">= ?</div></div>`;
 }
 
 function daypartKey(h) { return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"; }
@@ -462,6 +466,9 @@ function buildSetup() {
   document.querySelectorAll("#kgtimer-row .chip").forEach(chip => {
     chip.onclick = () => { settings.kgTimer = chip.dataset.kgtimer === "1"; refreshSetup(); };
   });
+  document.querySelectorAll("#kgsize-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.kgSize = chip.dataset.kgsize; refreshSetup(); };
+  });
   document.querySelectorAll("#timelevel-row .chip").forEach(chip => {
     chip.onclick = () => { settings.timeLevel = +chip.dataset.timelevel; refreshSetup(); };
   });
@@ -499,6 +506,7 @@ function refreshSetup() {
   $("qformat-group").hidden = !(mode === "test" && arithSelected);
   $("age-group").hidden = !kg;
   $("style-group").hidden = !kg;
+  $("kgsize-group").hidden = !(kg && settings.kgStyle === "shapes");
   $("kgtimer-group").hidden = !kg;
   $("range-group").hidden = !needsRange;
   $("tables-group").hidden = !needsTables;
@@ -525,6 +533,7 @@ function refreshSetup() {
   document.querySelectorAll("#age-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.age === settings.kgAge));
   document.querySelectorAll("#style-row .op-chip").forEach(c => c.classList.toggle("selected", c.dataset.style === settings.kgStyle));
   document.querySelectorAll("#kgtimer-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.kgtimer === "1") === settings.kgTimer));
+  document.querySelectorAll("#kgsize-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.kgsize === settings.kgSize));
   document.querySelectorAll("#timelevel-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.timelevel === settings.timeLevel));
   document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.clock24 === "1") === settings.clock24));
   document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
@@ -549,6 +558,7 @@ function applyLang() {
   $("t-age").textContent = t.age;
   $("t-style").textContent = t.style;
   $("t-kgtimer").textContent = t.kgTimer;
+  $("t-kgsize").textContent = t.kgSize;
   $("t-range").textContent = t.range;
   $("t-tables").textContent = t.tables;
   $("t-factor").textContent = t.factorMax;

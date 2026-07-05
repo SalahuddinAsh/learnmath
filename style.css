@@ -49,8 +49,14 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 .chip.selected { background: #7c5cff; border-color: #7c5cff; color: #fff; box-shadow: 0 4px 14px rgba(124, 92, 255, .4); }
 
 .op-chip { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 108px; }
+.op-chip[hidden] { display: none; }
 .op-sym { font-size: 1.7rem; line-height: 1; }
 .op-name { font-size: .85rem; font-weight: 600; }
+
+/* all five operations stay on one line */
+#op-row { flex-wrap: nowrap; }
+#op-row .op-chip { min-width: 0; flex: 1 1 0; padding: 10px 4px; }
+#op-row .op-name { font-size: clamp(.6rem, 2vw, .85rem); }
 
 .chip-row.tables .chip { min-width: 56px; flex: 0 0 auto; }
 
@@ -95,7 +101,10 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 .question.shapes { font-size: 1rem; letter-spacing: 0; }
 .shape-q { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
 .shape-group { display: grid; gap: 14px; background: #f6f4ff; border: 2px solid #e3defc; border-radius: 24px; padding: 18px 20px; }
-.shape-group span { font-size: clamp(2.8rem, 8vw, 4.2rem); line-height: 1; }
+.shape-group span { line-height: 1; }
+.shape-q.size-s .shape-group span { font-size: clamp(1.8rem, 5vw, 2.6rem); }
+.shape-q.size-m .shape-group span { font-size: clamp(2.3rem, 6.5vw, 3.4rem); }
+.shape-q.size-l .shape-group span { font-size: clamp(2.8rem, 8vw, 4.2rem); }
 .shape-op { font-size: clamp(2.6rem, 7vw, 3.6rem); font-weight: 800; color: #4a4570; }
 .daypart { font-size: 1.35rem; font-weight: 800; color: #6b6790; margin-top: 8px; }
 .daypart[hidden] { display: none; }
