@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.2.1";
+const APP_VERSION = "1.2.2";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500];
