@@ -39,6 +39,7 @@ const STRINGS = {
     whatTime: "What time is it?",
     age: "Age",
     style: "Show questions with", shapes: "Shapes", digits: "Digits",
+    kgTimer: "Timer", timerOn: "⏱️ On", timerOff: "🚫 Off",
     range: "Biggest answer (+ / −)",
     tables: "Numbers to practice (× / ÷)",
     tablesNote: "All questions in order: ×1 … ×10, then extra practice for tricky ones",
@@ -75,6 +76,7 @@ const STRINGS = {
     whatTime: "كم الساعة الآن؟",
     age: "العمر",
     style: "شكل الأسئلة", shapes: "أشكال", digits: "أرقام",
+    kgTimer: "المؤقت", timerOn: "⏱️ يعمل", timerOff: "🚫 بدون",
     range: "أكبر ناتج (+ / −)",
     tables: "أرقام التدريب (× / ÷)",
     tablesNote: "كل الأسئلة بالترتيب: ×1 … ×10، ثم تدريب إضافي على الأسئلة الصعبة",
@@ -111,6 +113,7 @@ const STRINGS = {
     whatTime: "Wie spät ist es?",
     age: "Alter",
     style: "Aufgaben zeigen mit", shapes: "Bildern", digits: "Zahlen",
+    kgTimer: "Zeitlimit", timerOn: "⏱️ An", timerOff: "🚫 Aus",
     range: "Größtes Ergebnis (+ / −)",
     tables: "Zahlen zum Üben (× / ÷)",
     tablesNote: "Alle Aufgaben der Reihe nach: ×1 … ×10, dann Extra-Übung für knifflige",
@@ -146,7 +149,7 @@ const DEFAULTS = {
   lang: "en", mode: "test",
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
-  kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes",
+  kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true,
   sound: true,
 };
 let settings = loadSettings();
@@ -171,6 +174,7 @@ function loadSettings() {
       kgAge: AGE_OPTIONS.includes(s.kgAge) ? s.kgAge : DEFAULTS.kgAge,
       kgOps: kgOps.length ? kgOps : [...DEFAULTS.kgOps],
       kgStyle: s.kgStyle === "digits" ? "digits" : "shapes",
+      kgTimer: s.kgTimer !== false,
       sound: s.sound !== false,
     };
   } catch { return { ...DEFAULTS }; }
@@ -452,6 +456,9 @@ function buildSetup() {
   document.querySelectorAll("#style-row .op-chip").forEach(chip => {
     chip.onclick = () => { settings.kgStyle = chip.dataset.style; refreshSetup(); };
   });
+  document.querySelectorAll("#kgtimer-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.kgTimer = chip.dataset.kgtimer === "1"; refreshSetup(); };
+  });
   document.querySelectorAll("#timelevel-row .chip").forEach(chip => {
     chip.onclick = () => { settings.timeLevel = +chip.dataset.timelevel; refreshSetup(); };
   });
@@ -486,6 +493,7 @@ function refreshSetup() {
   $("qformat-group").hidden = !(mode === "test" && arithSelected);
   $("age-group").hidden = !kg;
   $("style-group").hidden = !kg;
+  $("kgtimer-group").hidden = !kg;
   $("range-group").hidden = !needsRange;
   $("tables-group").hidden = !needsTables;
   $("tables-note").hidden = !marathon;
@@ -509,6 +517,7 @@ function refreshSetup() {
   document.querySelectorAll("#count-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.count === settings.count));
   document.querySelectorAll("#age-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.age === settings.kgAge));
   document.querySelectorAll("#style-row .op-chip").forEach(c => c.classList.toggle("selected", c.dataset.style === settings.kgStyle));
+  document.querySelectorAll("#kgtimer-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.kgtimer === "1") === settings.kgTimer));
   document.querySelectorAll("#timelevel-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.timelevel === settings.timeLevel));
   document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.clock24 === "1") === settings.clock24));
   document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
@@ -531,6 +540,7 @@ function applyLang() {
   $("t-ops").textContent = t.ops;
   $("t-age").textContent = t.age;
   $("t-style").textContent = t.style;
+  $("t-kgtimer").textContent = t.kgTimer;
   $("t-range").textContent = t.range;
   $("t-tables").textContent = t.tables;
   $("tables-note").textContent = t.tablesNote;
@@ -580,6 +590,7 @@ function buildQuestions() {
     return Array.from({ length: settings.count }, () => {
       const q = generateQuestion(cfg, recent);
       q.kg = true;
+      if (!settings.kgTimer) q.untimed = true;
       if (settings.kgStyle === "shapes") { q.kgStyle = "shapes"; q.emoji = pick(EMOJIS); }
       return q;
     });
@@ -648,7 +659,15 @@ function nextQuestion() {
   $("feedback").className = "feedback";
   $("progress-text").textContent = `${quiz.index + 1} / ${quiz.questions.length}`;
   $("score-pill").textContent = `⭐ ${Math.round(quiz.points)}`;
-  startTimer(timeFor(q));
+  $("timebar-row").hidden = !!q.untimed;
+  if (q.untimed) {
+    // no time pressure: full speed bonus for every correct answer
+    stopTimer();
+    quiz.timerStart = performance.now();
+    quiz.timerTotal = Infinity;
+  } else {
+    startTimer(timeFor(q));
+  }
 }
 
 /* ---- pick-style time input: a row of hours, a row of minutes ---- */

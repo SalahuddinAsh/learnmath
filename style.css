@@ -80,6 +80,7 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 .score-pill { background: rgba(255, 255, 255, .25); color: #fff; font-weight: 800; border-radius: 14px; padding: 10px 16px; font-size: 1.1rem; }
 
 .timebar-row { display: flex; align-items: center; gap: 12px; }
+.timebar-row[hidden] { display: none; }
 .timebar-track { flex: 1; height: 22px; border-radius: 12px; background: rgba(255, 255, 255, .3); overflow: hidden; }
 .time-left { color: #fff; font-weight: 800; font-size: 1.35rem; min-width: 2.2ch; text-align: center; font-variant-numeric: tabular-nums; }
 .timebar { height: 100%; width: 100%; border-radius: 8px; background: #3ddc84; transition: width .1s linear, background .3s; }
@@ -92,10 +93,10 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 }
 .question { font-size: clamp(2.4rem, 8vw, 3.6rem); font-weight: 800; letter-spacing: 2px; }
 .question.shapes { font-size: 1rem; letter-spacing: 0; }
-.shape-q { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
-.shape-group { display: grid; gap: 10px; background: #f6f4ff; border: 2px solid #e3defc; border-radius: 20px; padding: 14px 16px; }
-.shape-group span { font-size: clamp(2rem, 5.5vw, 2.8rem); line-height: 1; }
-.shape-op { font-size: clamp(2rem, 5.5vw, 2.8rem); font-weight: 800; color: #4a4570; }
+.shape-q { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.shape-group { display: grid; gap: 14px; background: #f6f4ff; border: 2px solid #e3defc; border-radius: 24px; padding: 18px 20px; }
+.shape-group span { font-size: clamp(2.8rem, 8vw, 4.2rem); line-height: 1; }
+.shape-op { font-size: clamp(2.6rem, 7vw, 3.6rem); font-weight: 800; color: #4a4570; }
 .daypart { font-size: 1.35rem; font-weight: 800; color: #6b6790; margin-top: 8px; }
 .daypart[hidden] { display: none; }
 .clock-wrap { display: flex; justify-content: center; margin-top: 8px; }

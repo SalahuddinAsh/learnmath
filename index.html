@@ -62,6 +62,14 @@
         </div>
       </div>
 
+      <div class="setup-group" id="kgtimer-group" hidden>
+        <h2 id="t-kgtimer">Timer</h2>
+        <div class="chip-row" id="kgtimer-row">
+          <button class="chip" data-kgtimer="1" type="button" data-t="timerOn">⏱️ On</button>
+          <button class="chip" data-kgtimer="0" type="button" data-t="timerOff">🚫 Off</button>
+        </div>
+      </div>
+
       <div class="setup-group" id="qformat-group" hidden>
         <h2 id="t-qformat">Question style</h2>
         <div class="chip-row" id="qformat-row">
@@ -124,7 +132,7 @@
         <div class="score-pill" id="score-pill" dir="ltr">⭐ 0</div>
       </div>
 
-      <div class="timebar-row" dir="ltr">
+      <div class="timebar-row" id="timebar-row" dir="ltr">
         <div class="timebar-track"><div class="timebar" id="timebar"></div></div>
         <div class="time-left" id="time-left">10</div>
       </div>
