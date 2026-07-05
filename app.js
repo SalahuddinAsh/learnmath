@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.3.1";
+const APP_VERSION = "1.4.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -44,6 +44,10 @@ const STRINGS = {
     diff: "Difficulty", diffEasy: "😌 Easy · 30s", diffMed: "🙂 Medium · 20s", diffHard: "🔥 Hard · 10s",
     diffNote: "Easy: answering after time runs out still counts, for fewer points",
     overtime: "⏰ Keep going — fewer points now",
+    game: "Game unlock score", gameOff: "🚫 Off",
+    gameNote: "Score at least this much in a test to unlock one round of Meteor Blaster ☄️",
+    gamePlay: "🎮 Play Meteor Blaster!",
+    gameOver: "Game over! ☄️",
     hours: "Hours", minutes: "Minutes",
     morning: "in the morning ☀️", afternoon: "in the afternoon 🌇", evening: "in the evening 🌙",
     count: "How many questions?",
@@ -87,6 +91,10 @@ const STRINGS = {
     diff: "مستوى الصعوبة", diffEasy: "😌 سهل · 30 ث", diffMed: "🙂 وسط · 20 ث", diffHard: "🔥 صعب · 10 ث",
     diffNote: "سهل: يمكن الإجابة بعد انتهاء الوقت لكن بنقاط أقل",
     overtime: "⏰ أكمل — النقاط أقل الآن",
+    game: "نقاط فتح اللعبة", gameOff: "🚫 إيقاف",
+    gameNote: "احصل على هذه النقاط في الاختبار لتفتح جولة من صائد النيازك ☄️",
+    gamePlay: "!العب صائد النيازك 🎮",
+    gameOver: "انتهت اللعبة! ☄️",
     hours: "الساعات", minutes: "الدقائق",
     morning: "صباحًا ☀️", afternoon: "بعد الظهر 🌇", evening: "مساءً 🌙",
     count: "كم عدد الأسئلة؟",
@@ -130,6 +138,10 @@ const STRINGS = {
     diff: "Schwierigkeit", diffEasy: "😌 Leicht · 30s", diffMed: "🙂 Mittel · 20s", diffHard: "🔥 Schwer · 10s",
     diffNote: "Leicht: Antworten nach Ablauf zählt noch, gibt aber weniger Punkte",
     overtime: "⏰ Weiter — jetzt weniger Punkte",
+    game: "Punkte fürs Spiel", gameOff: "🚫 Aus",
+    gameNote: "Erreiche diese Punktzahl im Test, um eine Runde Meteor-Blaster freizuschalten ☄️",
+    gamePlay: "🎮 Meteor-Blaster spielen!",
+    gameOver: "Game over! ☄️",
     hours: "Stunden", minutes: "Minuten",
     morning: "morgens ☀️", afternoon: "nachmittags 🌇", evening: "abends 🌙",
     count: "Wie viele Aufgaben?",
@@ -157,7 +169,7 @@ const DEFAULTS = {
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
   kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
-  sound: true, autoSubmit: true, difficulty: "medium",
+  sound: true, autoSubmit: true, difficulty: "medium", gameScore: 700,
 };
 let settings = loadSettings();
 
@@ -187,6 +199,7 @@ function loadSettings() {
       sound: s.sound !== false,
       autoSubmit: s.autoSubmit !== false,
       difficulty: ["easy", "medium", "hard"].includes(s.difficulty) ? s.difficulty : DEFAULTS.difficulty,
+      gameScore: [0, 500, 700, 800, 900].includes(s.gameScore) ? s.gameScore : DEFAULTS.gameScore,
     };
   } catch { return { ...DEFAULTS }; }
 }
@@ -523,6 +536,9 @@ function buildSetup() {
   document.querySelectorAll("#diff-row .chip").forEach(chip => {
     chip.onclick = () => { settings.difficulty = chip.dataset.diff; refreshSetup(); };
   });
+  document.querySelectorAll("#game-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.gameScore = +chip.dataset.game; refreshSetup(); };
+  });
   document.querySelectorAll(".lang-chip:not(.sound-btn)").forEach(chip => {
     chip.onclick = () => { settings.lang = chip.dataset.lang; applyLang(); refreshSetup(); };
   });
@@ -581,6 +597,7 @@ function refreshSetup() {
   document.querySelectorAll("#auto-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.auto === "1") === settings.autoSubmit));
   $("diff-group").hidden = kg && !settings.kgTimer;
   document.querySelectorAll("#diff-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.diff === settings.difficulty));
+  document.querySelectorAll("#game-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.game === settings.gameScore));
 
   let hint = "";
   if (!marathon && activeOps.length === 0) hint = T().hintOps;
@@ -612,6 +629,10 @@ function applyLang() {
   $("t-auto").textContent = t.auto;
   $("t-diff").textContent = t.diff;
   $("diff-note").textContent = t.diffNote;
+  $("t-game").textContent = t.game;
+  $("game-note").textContent = t.gameNote;
+  $("btn-play-game").textContent = t.gamePlay;
+  $("go-title").textContent = t.gameOver;
   $("t-hours").textContent = t.hours;
   $("t-minutes").textContent = t.minutes;
   $("t-count").textContent = t.count;
@@ -893,6 +914,9 @@ function finishQuiz() {
   $("sub-score").textContent = `✓ ${quiz.correct} / ${total}`;
   $("cheer").textContent = T()["cheer" + stars];
 
+  // qualifying score earns one round of the meteor game
+  $("btn-play-game").hidden = !(settings.gameScore > 0 && score >= settings.gameScore);
+
   const best = loadBest();
   const bestLine = $("best-line");
   if (score > (best[quiz.mode] || 0)) {
@@ -925,6 +949,152 @@ function finishQuiz() {
   showScreen("results");
 }
 
+/* ================= Meteor Blaster (reward game) ================= */
+let game = null;
+
+function gameCfg() {
+  let ops = (settings.mode === "kg" ? settings.kgOps : settings.ops).filter(o => o !== "time");
+  if (settings.mode === "tables") ops = ["mul"];
+  if (!ops.length) ops = ["add"];
+  const cfg = {
+    ops,
+    range: settings.mode === "kg" ? RANGE_BY_AGE[settings.kgAge] : settings.range,
+    tables: settings.tables.length ? [...settings.tables] : [2, 3, 4, 5],
+    factorMax: settings.factorMax,
+    qFormat: "result",
+  };
+  cfg.weakQs = weakQuestions(cfg); // the game drills tricky facts too
+  return cfg;
+}
+
+function startGame() {
+  $("btn-play-game").hidden = true; // the ticket is spent
+  document.querySelectorAll("#sky .meteor").forEach(m => m.remove());
+  $("game-over").hidden = true;
+  game = {
+    cfg: gameCfg(), recent: [],
+    score: 0, lives: 3, meteors: [], entry: "",
+    speed: 26, spawnEvery: 3000, sinceSpawn: 2500,
+    over: false, prev: performance.now(), raf: null,
+  };
+  updateGameHud();
+  $("game-entry").textContent = " ";
+  showScreen("game");
+  game.raf = requestAnimationFrame(gameTick);
+}
+
+function updateGameHud() {
+  $("game-lives").textContent = "❤️".repeat(game.lives) || "💔";
+  $("game-score").textContent = `☄️ ${game.score}`;
+}
+
+function gameTick(now) {
+  if (!game || game.over) return;
+  const dt = Math.min(0.1, (now - game.prev) / 1000);
+  game.prev = now;
+  const sky = $("sky");
+  const H = sky.clientHeight;
+  game.sinceSpawn += dt * 1000;
+  if (game.sinceSpawn >= game.spawnEvery && game.meteors.length < 4) {
+    spawnMeteor();
+    game.sinceSpawn = 0;
+  }
+  for (const m of [...game.meteors]) {
+    m.y += game.speed * dt;
+    m.el.style.top = m.y + "px";
+    if (m.y > H - 52) meteorLanded(m);
+  }
+  game.raf = requestAnimationFrame(gameTick);
+}
+
+function spawnMeteor() {
+  const q = generateQuestion(game.cfg, game.recent);
+  const el = document.createElement("div");
+  el.className = "meteor";
+  el.textContent = `${q.a} ${OP_SYMBOL[q.op]} ${q.b}`;
+  el.style.left = (5 + Math.random() * 62) + "%";
+  el.style.top = "-50px";
+  $("sky").appendChild(el);
+  game.meteors.push({ q, el, y: -50 });
+}
+
+function removeMeteor(m) {
+  game.meteors = game.meteors.filter(x => x !== m);
+  m.el.remove();
+}
+
+function meteorLanded(m) {
+  m.el.textContent = "💥";
+  m.el.classList.add("boom");
+  const el = m.el;
+  game.meteors = game.meteors.filter(x => x !== m);
+  setTimeout(() => el.remove(), 400);
+  game.lives--;
+  updateGameHud();
+  soundBad();
+  if (game.lives <= 0) endGame();
+}
+
+function blast(m) {
+  m.el.textContent = "💥";
+  m.el.classList.add("boom");
+  const el = m.el;
+  game.meteors = game.meteors.filter(x => x !== m);
+  setTimeout(() => el.remove(), 400);
+  game.score += 10;
+  // every blast makes the sky a little angrier
+  game.speed += 1.5;
+  game.spawnEvery = Math.max(1300, game.spawnEvery - 55);
+  updateGameHud();
+  beep([880, 1320], 0.08);
+}
+
+function gameKey(key) {
+  if (!game || game.over) return;
+  if (key === "back") game.entry = game.entry.slice(0, -1);
+  else if (game.entry.length < 4) game.entry += key;
+  const val = parseInt(game.entry, 10);
+  // the lowest matching meteor is the most urgent one
+  const hit = game.meteors.filter(m => m.q.answer === val).sort((a, b) => b.y - a.y)[0];
+  if (hit) {
+    blast(hit);
+    game.entry = "";
+  } else if (game.entry.length >= Math.max(1, ...game.meteors.map(m => String(m.q.answer).length))) {
+    game.entry = ""; // full-length miss: clear for the next try
+  }
+  $("game-entry").textContent = game.entry || " ";
+}
+
+function endGame() {
+  game.over = true;
+  if (game.raf) cancelAnimationFrame(game.raf);
+  const best = loadBest();
+  const prev = best.meteor || 0;
+  $("go-score").textContent = `☄️ ${game.score}`;
+  if (game.score > prev) {
+    best.meteor = game.score;
+    saveBest(best);
+    $("go-best").textContent = T().newRecord;
+  } else {
+    $("go-best").textContent = `${T().best}: ${prev}`;
+  }
+  $("game-over").hidden = false;
+}
+
+function quitGame(target) {
+  if (game && game.raf) cancelAnimationFrame(game.raf);
+  game = null;
+  showScreen(target);
+}
+
+$("game-numpad").addEventListener("click", e => {
+  const key = e.target.closest(".key");
+  if (key) gameKey(key.dataset.key);
+});
+$("btn-play-game").onclick = startGame;
+$("btn-game-quit").onclick = () => quitGame("results");
+$("btn-game-done").onclick = () => quitGame("results");
+
 /* ================= wiring ================= */
 $("numpad").addEventListener("click", e => {
   const key = e.target.closest(".key");
@@ -934,6 +1104,11 @@ $("pick-ok").onclick = () => {
   if (quiz && !quiz.locked && quiz.pickH != null && quiz.pickM != null) submit();
 };
 document.addEventListener("keydown", e => {
+  if ($("screen-game").classList.contains("active")) {
+    if (/^[0-9]$/.test(e.key)) gameKey(e.key);
+    else if (e.key === "Backspace") gameKey("back");
+    return;
+  }
   if (!$("screen-quiz").classList.contains("active")) return;
   if (/^[0-9]$/.test(e.key)) onKey(e.key);
   else if (e.key === "Backspace") onKey("back");
