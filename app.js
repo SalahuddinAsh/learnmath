@@ -1,9 +1,9 @@
 "use strict";
 
-const APP_VERSION = "1.2.2";
+const APP_VERSION = "1.3.0";
 
 /* ================= tunable constants ================= */
-const RANGE_OPTIONS = [10, 20, 50, 100, 500];
+const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
 const COUNT_OPTIONS = [5, 10, 15, 20];
 const AGE_OPTIONS = [4, 5, 6, 7];
 const RANGE_BY_AGE = { 4: 5, 5: 10, 6: 15, 7: 20 };
@@ -355,13 +355,21 @@ function questionText(q) {
   return `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ?`;
 }
 
-// kindergarten shapes: each operand as a grid of big emoji, max 5 per row
+// kindergarten shapes: each operand packed into a square-ish block so the
+// whole equation stays on one line; big counts step the size down a notch
 function shapesHTML(q) {
+  const cols = n => Math.ceil(Math.sqrt(n));
   const group = n =>
-    `<div class="shape-group" style="grid-template-columns: repeat(${Math.min(n, 5)}, auto)">` +
+    `<div class="shape-group" style="grid-template-columns: repeat(${cols(n)}, auto)">` +
     Array.from({ length: n }, () => `<span>${q.emoji}</span>`).join("") +
     `</div>`;
-  return `<div class="shape-q size-${settings.kgSize}">${group(q.a)}<div class="shape-op">${OP_SYMBOL[q.op]}</div>${group(q.b)}<div class="shape-op">= ?</div></div>`;
+  const sizes = ["s", "m", "l"];
+  let si = sizes.indexOf(settings.kgSize);
+  const total = q.a + q.b;
+  if (total > 8) si--;
+  if (total > 14) si--;
+  const size = sizes[Math.max(0, si)];
+  return `<div class="shape-q size-${size}">${group(q.a)}<div class="shape-op">${OP_SYMBOL[q.op]}</div>${group(q.b)}<div class="shape-op">= ?</div></div>`;
 }
 
 function daypartKey(h) { return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"; }
@@ -699,7 +707,9 @@ function nextQuestion() {
   }
   const pick = usesPick(q);
   $("numpad").hidden = pick;
+  $("numpad").classList.toggle("no-ok", settings.autoSubmit);
   $("time-pick").hidden = !pick;
+  $("pick-ok").hidden = settings.autoSubmit;
   if (pick) buildPickRows(q);
   $("answer-box").textContent = " ";
   $("answer-box").className = "answer-box";
