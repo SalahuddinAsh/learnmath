@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -374,6 +374,18 @@ function shapesHTML(q) {
 
 function daypartKey(h) { return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"; }
 
+// shrink the whole shapes equation until it fits inside the question card
+function fitShapes() {
+  const qEl = $("question");
+  const row = qEl.querySelector(".shape-q");
+  if (!row) return;
+  row.style.zoom = "";
+  const avail = qEl.clientWidth;
+  const need = row.scrollWidth;
+  if (need > avail) row.style.zoom = Math.max(0.4, (avail / need) * 0.97);
+}
+window.addEventListener("resize", fitShapes);
+
 function answerText(q) {
   if (q.op === "time") return `${q.a}:${String(q.b).padStart(2, "0")}`;
   return String(q.answer);
@@ -688,6 +700,7 @@ function nextQuestion() {
   if (q.kgStyle === "shapes") {
     qEl.innerHTML = shapesHTML(q);
     qEl.classList.add("shapes");
+    requestAnimationFrame(fitShapes);
   } else {
     qEl.textContent = questionText(q);
     qEl.classList.remove("shapes");

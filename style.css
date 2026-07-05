@@ -100,13 +100,13 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 }
 .question { font-size: clamp(2.4rem, 8vw, 3.6rem); font-weight: 800; letter-spacing: 2px; }
 .question.shapes { font-size: 1rem; letter-spacing: 0; }
-.shape-q { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: nowrap; }
-.shape-group { display: grid; gap: 10px; background: #f6f4ff; border: 2px solid #e3defc; border-radius: 24px; padding: 14px 16px; justify-items: center; }
+.shape-q { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap; }
+.shape-group { display: grid; gap: 8px; background: #f6f4ff; border: 2px solid #e3defc; border-radius: 20px; padding: 12px 14px; justify-items: center; flex: 0 0 auto; }
 .shape-group span { line-height: 1; }
 .shape-q.size-s .shape-group span { font-size: clamp(1.8rem, 5vw, 2.6rem); }
 .shape-q.size-m .shape-group span { font-size: clamp(2.3rem, 6.5vw, 3.4rem); }
 .shape-q.size-l .shape-group span { font-size: clamp(2.8rem, 8vw, 4.2rem); }
-.shape-op { font-size: clamp(2.6rem, 7vw, 3.6rem); font-weight: 800; color: #4a4570; }
+.shape-op { font-size: clamp(2.6rem, 7vw, 3.6rem); font-weight: 800; color: #4a4570; white-space: nowrap; flex: 0 0 auto; }
 .daypart { font-size: 1.35rem; font-weight: 800; color: #6b6790; margin-top: 8px; }
 .daypart[hidden] { display: none; }
 .clock-wrap { display: flex; justify-content: center; margin-top: 8px; }
