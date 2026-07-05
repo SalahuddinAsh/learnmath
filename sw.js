@@ -1,4 +1,4 @@
-const CACHE = "math-stars-v2";
+const CACHE = "math-stars-v3";
 const ASSETS = [
   ".",
   "index.html",

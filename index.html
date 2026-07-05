@@ -21,10 +21,23 @@
     <div class="card">
       <div class="setup-top">
         <h1 id="t-title">Math Stars ⭐</h1>
-        <button id="btn-lang" class="lang-btn" type="button">العربية</button>
+        <div class="lang-row" id="lang-row">
+          <button class="lang-chip" data-lang="en" type="button">EN</button>
+          <button class="lang-chip" data-lang="ar" type="button">ع</button>
+          <button class="lang-chip" data-lang="de" type="button">DE</button>
+        </div>
       </div>
 
       <div class="setup-group">
+        <h2 id="t-mode">Mode</h2>
+        <div class="chip-row" id="mode-row">
+          <button class="chip op-chip mode-chip" data-mode="test"   type="button"><span class="op-sym">🎯</span><span class="op-name" data-t="modeTest">Quiz</span></button>
+          <button class="chip op-chip mode-chip" data-mode="kg"     type="button"><span class="op-sym">🧸</span><span class="op-name" data-t="modeKg">Kindergarten</span></button>
+          <button class="chip op-chip mode-chip" data-mode="tables" type="button"><span class="op-sym">✖️</span><span class="op-name" data-t="modeTables">Times tables</span></button>
+        </div>
+      </div>
+
+      <div class="setup-group" id="ops-group">
         <h2 id="t-ops">Choose operations</h2>
         <div class="chip-row" id="op-row">
           <button class="chip op-chip" data-op="add"  type="button"><span class="op-sym">+</span><span class="op-name" data-t="add">Add</span></button>
@@ -32,6 +45,19 @@
           <button class="chip op-chip" data-op="mul"  type="button"><span class="op-sym">×</span><span class="op-name" data-t="mul">Multiply</span></button>
           <button class="chip op-chip" data-op="div"  type="button"><span class="op-sym">÷</span><span class="op-name" data-t="div">Divide</span></button>
           <button class="chip op-chip" data-op="time" type="button"><span class="op-sym">🕐</span><span class="op-name" data-t="time">Time</span></button>
+        </div>
+      </div>
+
+      <div class="setup-group" id="age-group" hidden>
+        <h2 id="t-age">Age</h2>
+        <div class="chip-row" id="age-row"></div>
+      </div>
+
+      <div class="setup-group" id="style-group" hidden>
+        <h2 id="t-style">Show questions with</h2>
+        <div class="chip-row" id="style-row">
+          <button class="chip op-chip" data-style="shapes" type="button"><span class="op-sym">🍎</span><span class="op-name" data-t="shapes">Shapes</span></button>
+          <button class="chip op-chip" data-style="digits" type="button"><span class="op-sym">🔢</span><span class="op-name" data-t="digits">Digits</span></button>
         </div>
       </div>
 
@@ -43,9 +69,18 @@
       <div class="setup-group" id="tables-group" hidden>
         <h2 id="t-tables">Numbers to practice (× / ÷)</h2>
         <div class="chip-row tables" id="tables-row"></div>
+        <p class="group-note" id="tables-note" hidden>In order: ×1 … ×10</p>
       </div>
 
-      <div class="setup-group">
+      <div class="setup-group" id="timelevel-group" hidden>
+        <h2 id="t-timelevel">Clock difficulty</h2>
+        <div class="chip-row" id="timelevel-row">
+          <button class="chip" data-timelevel="1" type="button" data-t="level1">Easy: 00 15 30 45</button>
+          <button class="chip" data-timelevel="2" type="button" data-t="level2">Every 5 minutes</button>
+        </div>
+      </div>
+
+      <div class="setup-group" id="count-group">
         <h2 id="t-count">How many questions?</h2>
         <div class="chip-row" id="count-row"></div>
       </div>

@@ -26,11 +26,15 @@ h1 { font-size: 1.9rem; margin: 0; }
 h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 
 /* ============ setup ============ */
-.setup-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.lang-btn {
+.setup-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 10px; }
+.lang-row { display: flex; gap: 6px; }
+.lang-chip {
   border: 2px solid #e3defc; background: #f6f4ff; color: #7c5cff;
-  border-radius: 14px; padding: 8px 16px; font-size: 1rem; font-weight: 700; cursor: pointer;
+  border-radius: 12px; padding: 8px 12px; font-size: .95rem; font-weight: 700; cursor: pointer;
+  min-width: 44px; min-height: 40px;
 }
+.lang-chip.selected { background: #7c5cff; border-color: #7c5cff; color: #fff; }
+.group-note { margin: 10px 2px 0; color: #9a95c0; font-size: .9rem; font-weight: 600; }
 
 .setup-group { margin-bottom: 20px; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -85,6 +89,7 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
   text-align: center; box-shadow: 0 10px 30px rgba(40, 20, 100, .2);
 }
 .question { font-size: clamp(2.4rem, 8vw, 3.6rem); font-weight: 800; letter-spacing: 2px; }
+.question.shapes { font-size: clamp(1.3rem, 4.5vw, 2rem); letter-spacing: 2px; line-height: 1.6; overflow-wrap: anywhere; }
 .clock-wrap { display: flex; justify-content: center; margin-top: 8px; }
 .clock-wrap svg { width: clamp(160px, 28dvh, 230px); height: auto; }
 .clock-wrap[hidden] { display: none; }
