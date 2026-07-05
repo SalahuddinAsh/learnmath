@@ -44,6 +44,12 @@ const STRINGS = {
     tablesNote: "All questions in order: ×1 … ×10, then extra practice for tricky ones",
     timeLevel: "Clock difficulty",
     level1: "Easy: 00 · 15 · 30 · 45", level2: "Every 5 minutes",
+    clockMode: "Clock type", c12: "12-hour", c24: "24-hour",
+    timeInput: "Answer the time by", inputPick: "Picking buttons", inputType: "Typing",
+    qFormat: "Question style",
+    fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
+    hours: "Hours", minutes: "Minutes",
+    morning: "in the morning ☀️", afternoon: "in the afternoon 🌇", evening: "in the evening 🌙",
     count: "How many questions?",
     start: "Start! 🚀",
     hintOps: "Pick at least one operation",
@@ -52,6 +58,7 @@ const STRINGS = {
     answerIs: "The answer is",
     good: ["Great job! 🎉", "Awesome! ⭐", "You rock! 💪", "Super! 🌟", "Amazing! 🚀"],
     score: "Your score",
+    best: "Best score", newRecord: "🏆 New record!",
     review: "Review these",
     again: "Play again 🔁",
     settings: "Change settings ⚙️",
@@ -73,6 +80,12 @@ const STRINGS = {
     tablesNote: "كل الأسئلة بالترتيب: ×1 … ×10، ثم تدريب إضافي على الأسئلة الصعبة",
     timeLevel: "مستوى الساعة",
     level1: "سهل: 00 · 15 · 30 · 45", level2: "كل 5 دقائق",
+    clockMode: "نوع الساعة", c12: "12 ساعة", c24: "24 ساعة",
+    timeInput: "طريقة إجابة الوقت", inputPick: "اختيار الأزرار", inputType: "كتابة",
+    qFormat: "نمط الأسئلة",
+    fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
+    hours: "الساعات", minutes: "الدقائق",
+    morning: "صباحًا ☀️", afternoon: "بعد الظهر 🌇", evening: "مساءً 🌙",
     count: "كم عدد الأسئلة؟",
     start: "!ابدأ 🚀",
     hintOps: "اختر عملية واحدة على الأقل",
@@ -81,6 +94,7 @@ const STRINGS = {
     answerIs: "الإجابة الصحيحة",
     good: ["أحسنت! 🎉", "رائع! ⭐", "ممتاز! 💪", "عظيم! 🌟", "مذهل! 🚀"],
     score: "نتيجتك",
+    best: "أفضل نتيجة", newRecord: "🏆 رقم قياسي جديد!",
     review: "راجع هذه الأسئلة",
     again: "العب مرة أخرى 🔁",
     settings: "غيّر الإعدادات ⚙️",
@@ -102,6 +116,12 @@ const STRINGS = {
     tablesNote: "Alle Aufgaben der Reihe nach: ×1 … ×10, dann Extra-Übung für knifflige",
     timeLevel: "Uhr-Schwierigkeit",
     level1: "Leicht: 00 · 15 · 30 · 45", level2: "Alle 5 Minuten",
+    clockMode: "Uhrformat", c12: "12-Stunden", c24: "24-Stunden",
+    timeInput: "Uhrzeit eingeben per", inputPick: "Auswählen", inputType: "Tippen",
+    qFormat: "Aufgabenstil",
+    fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
+    hours: "Stunden", minutes: "Minuten",
+    morning: "morgens ☀️", afternoon: "nachmittags 🌇", evening: "abends 🌙",
     count: "Wie viele Aufgaben?",
     start: "Los! 🚀",
     hintOps: "Wähle mindestens eine Rechenart",
@@ -110,6 +130,7 @@ const STRINGS = {
     answerIs: "Die richtige Antwort ist",
     good: ["Super! 🎉", "Toll! ⭐", "Klasse! 💪", "Spitze! 🌟", "Fantastisch! 🚀"],
     score: "Deine Punkte",
+    best: "Bester Punktestand", newRecord: "🏆 Neuer Rekord!",
     review: "Diese nochmal üben",
     again: "Nochmal spielen 🔁",
     settings: "Einstellungen ⚙️",
@@ -123,8 +144,10 @@ const STRINGS = {
 /* ================= settings ================= */
 const DEFAULTS = {
   lang: "en", mode: "test",
-  ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, timeLevel: 1,
+  ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10,
+  timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
   kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes",
+  sound: true,
 };
 let settings = loadSettings();
 
@@ -142,9 +165,13 @@ function loadSettings() {
       tables: Array.isArray(s.tables) ? s.tables.filter(n => n >= TABLE_MIN && n <= TABLE_MAX) : [...DEFAULTS.tables],
       count: COUNT_OPTIONS.includes(s.count) ? s.count : DEFAULTS.count,
       timeLevel: s.timeLevel === 2 ? 2 : 1,
+      clock24: s.clock24 === true,
+      timeInput: s.timeInput === "pick" ? "pick" : "type",
+      qFormat: s.qFormat === "mixed" ? "mixed" : "result",
       kgAge: AGE_OPTIONS.includes(s.kgAge) ? s.kgAge : DEFAULTS.kgAge,
       kgOps: kgOps.length ? kgOps : [...DEFAULTS.kgOps],
       kgStyle: s.kgStyle === "digits" ? "digits" : "shapes",
+      sound: s.sound !== false,
     };
   } catch { return { ...DEFAULTS }; }
 }
@@ -152,21 +179,30 @@ function saveSettings() {
   try { localStorage.setItem("mathstars-settings", JSON.stringify(settings)); } catch {}
 }
 
-/* ================= weak multiplication facts =================
-   Facts (n×k) answered wrong are saved with a miss count and drawn
-   more often later; correct answers work the count back down. */
+/* ================= weak questions =================
+   Anything answered wrong is saved with a miss count and drawn more
+   often in later quizzes; correct answers work the count back down.
+   Keys: "f:3x7" (×/÷ fact), "add:5:7", "sub:12:4", "time:15:30". */
 function loadWeak() {
-  try { return JSON.parse(localStorage.getItem("mathstars-weak")) || {}; } catch { return {}; }
+  try {
+    const w = JSON.parse(localStorage.getItem("mathstars-weak")) || {};
+    for (const k of Object.keys(w)) { // migrate v1 fact keys ("3x7")
+      if (/^\d+x\d+$/.test(k)) { w["f:" + k] = w[k]; delete w[k]; }
+    }
+    return w;
+  } catch { return {}; }
 }
 function saveWeak(w) {
   try { localStorage.setItem("mathstars-weak", JSON.stringify(w)); } catch {}
 }
-function factKey(q) { return `${q.fa}x${q.fb}`; }
+function missKey(q) {
+  if (q.op === "mul" || q.op === "div") return `f:${q.fa}x${q.fb}`;
+  return `${q.op}:${q.a}:${q.b}`; // operands survive the blank transform
+}
 
 function recordResult(q, correct) {
-  if ((q.op !== "mul" && q.op !== "div") || !q.fa) return;
   const w = loadWeak();
-  const key = factKey(q);
+  const key = missKey(q);
   if (correct) {
     if (w[key]) { w[key]--; if (w[key] <= 0) delete w[key]; saveWeak(w); }
   } else {
@@ -175,15 +211,59 @@ function recordResult(q, correct) {
   }
 }
 
-// weighted pool of [n, k] facts limited to the currently selected tables
+// weighted pool of [n, k] facts for the marathon review round
 function weakPool(tables) {
   const w = loadWeak();
   const pool = [];
   for (const key of Object.keys(w)) {
-    const [n, k] = key.split("x").map(Number);
-    if (tables.includes(n)) for (let i = 0; i < w[key]; i++) pool.push([n, k]);
+    const m = key.match(/^f:(\d+)x(\d+)$/);
+    if (m && tables.includes(+m[1])) {
+      for (let i = 0; i < w[key]; i++) pool.push([+m[1], +m[2]]);
+    }
   }
   return pool;
+}
+
+// weighted pool of saved weak questions that fit the current quiz settings
+function weakQuestions(cfg) {
+  const w = loadWeak();
+  const pool = [];
+  for (const key of Object.keys(w)) {
+    const q = weakToQuestion(key, cfg);
+    if (q) for (let i = 0; i < w[key]; i++) pool.push(q);
+  }
+  return pool;
+}
+
+function weakToQuestion(key, cfg) {
+  let m = key.match(/^f:(\d+)x(\d+)$/);
+  if (m) {
+    const n = +m[1], k = +m[2];
+    const ops = ["mul", "div"].filter(o => cfg.ops.includes(o));
+    if (!ops.length || !cfg.tables.includes(n)) return null;
+    if (pick(ops) === "mul") {
+      const [a, b] = Math.random() < 0.5 ? [n, k] : [k, n];
+      return { op: "mul", a, b, fa: n, fb: k, answer: a * b };
+    }
+    const [d, ans] = Math.random() < 0.5 ? [n, k] : [k, n];
+    return { op: "div", a: n * k, b: d, fa: n, fb: k, answer: ans };
+  }
+  m = key.match(/^(add|sub|time):(\d+):(\d+)$/);
+  if (!m || !cfg.ops.includes(m[1])) return null;
+  const op = m[1], a = +m[2], b = +m[3];
+  if (op === "add") return a + b <= cfg.range ? { op, a, b, answer: a + b } : null;
+  if (op === "sub") return a <= cfg.range && b < a ? { op, a, b, answer: a - b } : null;
+  if (!cfg.clock24 && a > 12) return null;
+  if (cfg.timeLevel === 1 && b % 15 !== 0) return null;
+  return { op: "time", a, b, clock24: !!cfg.clock24, answer: a * 100 + b };
+}
+
+/* ================= high scores ================= */
+function loadBest() {
+  try { return JSON.parse(localStorage.getItem("mathstars-best")) || {}; } catch { return {}; }
+}
+function saveBest(b) {
+  try { localStorage.setItem("mathstars-best", JSON.stringify(b)); } catch {}
 }
 
 /* ================= helpers ================= */
@@ -197,8 +277,13 @@ const OP_SYMBOL = { add: "+", sub: "−", mul: "×", div: "÷" };
 
 function generateQuestion(cfg, recent) {
   for (let attempt = 0; attempt < 50; attempt++) {
-    const q = makeOne(pick(cfg.ops), cfg);
-    const key = `${q.op}:${q.a}:${q.b}`;
+    // previously missed questions come back more often
+    const q = (cfg.weakQs && cfg.weakQs.length && Math.random() < WEAK_BIAS)
+      ? { ...pick(cfg.weakQs) }
+      : makeOne(pick(cfg.ops), cfg);
+    // mixed style: half the arithmetic questions hide the middle operand instead
+    if (cfg.qFormat === "mixed" && q.op !== "time" && Math.random() < 0.5) toBlank(q);
+    const key = `${q.op}:${q.a}:${q.b}:${q.blank ? "_" : ""}`;
     if (!recent.includes(key) || attempt >= 40) {
       recent.push(key);
       if (recent.length > 4) recent.shift();
@@ -209,10 +294,11 @@ function generateQuestion(cfg, recent) {
 
 function makeOne(op, cfg) {
   if (op === "time") {
-    // read an analog clock; level 1 = quarter hours, level 2 = 5-minute steps
-    const h = rand(1, 12);
+    // read an analog clock; level 1 = quarter hours, level 2 = 5-minute steps.
+    // 24-hour clock shows a time-of-day badge and expects the converted hour.
+    const h = cfg.clock24 ? rand(1, 23) : rand(1, 12);
     const m = cfg.timeLevel === 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
-    return { op, a: h, b: m, answer: h * 100 + m }; // 3:15 -> 315
+    return { op, a: h, b: m, clock24: !!cfg.clock24, answer: h * 100 + m }; // 3:15 -> 315
   }
   if (op === "add") {
     const a = rand(1, Math.max(1, cfg.range - 1));
@@ -224,15 +310,9 @@ function makeOne(op, cfg) {
     const b = rand(1, a - 1);
     return { op, a, b, answer: a - b };
   }
-  // mul/div are built from a times-table fact: n (chosen table) × k (1–12);
-  // saved weak facts are drawn preferentially
-  let n, k;
-  if (cfg.weak && cfg.weak.length && Math.random() < WEAK_BIAS) {
-    [n, k] = pick(cfg.weak);
-  } else {
-    n = pick(cfg.tables);
-    k = rand(TABLE_MIN, TABLE_MAX);
-  }
+  // mul/div are built from a times-table fact: n (chosen table) × k (1–12)
+  const n = pick(cfg.tables);
+  const k = rand(TABLE_MIN, TABLE_MAX);
   if (op === "mul") {
     const [a, b] = Math.random() < 0.5 ? [n, k] : [k, n];
     return { op, a, b, fa: n, fb: k, answer: a * b };
@@ -243,13 +323,33 @@ function makeOne(op, cfg) {
   return { op, a: product, b: d, fa: n, fb: k, answer: ans };
 }
 
+// turn "a ∘ b = ?" into "a ∘ _ = result"; the kid finds the hidden operand.
+// For × the visible operand is always a chosen table number, so an unchosen
+// number never appears on the left side.
+function toBlank(q) {
+  if (q.op === "mul") { q.a = q.fa; q.b = q.fb; }
+  q.result = q.op === "mul" ? q.fa * q.fb : q.answer;
+  q.answer = q.b;
+  q.blank = true;
+  return q;
+}
+
 function questionText(q) {
   if (q.op === "time") return T().whatTime;
-  if (q.kgStyle === "shapes") {
-    return `${q.emoji.repeat(q.a)} ${OP_SYMBOL[q.op]} ${q.emoji.repeat(q.b)} = ?`;
-  }
+  if (q.blank) return `${q.a} ${OP_SYMBOL[q.op]} _ = ${q.result}`;
   return `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ?`;
 }
+
+// kindergarten shapes: each operand as a grid of big emoji, max 5 per row
+function shapesHTML(q) {
+  const group = n =>
+    `<div class="shape-group" style="grid-template-columns: repeat(${Math.min(n, 5)}, auto)">` +
+    Array.from({ length: n }, () => `<span>${q.emoji}</span>`).join("") +
+    `</div>`;
+  return `<div class="shape-q">${group(q.a)}<div class="shape-op">${OP_SYMBOL[q.op]}</div>${group(q.b)}<div class="shape-op">= ?</div></div>`;
+}
+
+function daypartKey(h) { return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"; }
 
 function answerText(q) {
   if (q.op === "time") return `${q.a}:${String(q.b).padStart(2, "0")}`;
@@ -296,13 +396,14 @@ function clockSVG(h, m) {
 
 /* ================= sounds (tiny WebAudio blips) ================= */
 let audioCtx = null;
-function beep(freqs, dur) {
+function beep(freqs, dur, vol = 0.15) {
+  if (!settings.sound) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     freqs.forEach((f, i) => {
       const o = audioCtx.createOscillator(), g = audioCtx.createGain();
       o.type = "sine"; o.frequency.value = f;
-      g.gain.setValueAtTime(0.15, audioCtx.currentTime + i * dur);
+      g.gain.setValueAtTime(vol, audioCtx.currentTime + i * dur);
       g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (i + 1) * dur);
       o.connect(g).connect(audioCtx.destination);
       o.start(audioCtx.currentTime + i * dur);
@@ -312,6 +413,7 @@ function beep(freqs, dur) {
 }
 const soundGood = () => beep([660, 880], 0.12);
 const soundBad = () => beep([220, 180], 0.18);
+const soundTick = () => beep([1250], 0.05, 0.07);
 
 /* ================= setup screen ================= */
 function makeChips(rowId, values, dataKey, onTap) {
@@ -353,9 +455,19 @@ function buildSetup() {
   document.querySelectorAll("#timelevel-row .chip").forEach(chip => {
     chip.onclick = () => { settings.timeLevel = +chip.dataset.timelevel; refreshSetup(); };
   });
-  document.querySelectorAll(".lang-chip").forEach(chip => {
+  document.querySelectorAll("#clockmode-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.clock24 = chip.dataset.clock24 === "1"; refreshSetup(); };
+  });
+  document.querySelectorAll("#timeinput-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.timeInput = chip.dataset.timeinput; refreshSetup(); };
+  });
+  document.querySelectorAll("#qformat-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.qFormat = chip.dataset.qformat; refreshSetup(); };
+  });
+  document.querySelectorAll(".lang-chip:not(.sound-btn)").forEach(chip => {
     chip.onclick = () => { settings.lang = chip.dataset.lang; applyLang(); refreshSetup(); };
   });
+  $("btn-sound").onclick = () => { settings.sound = !settings.sound; refreshSetup(); };
   $("btn-start").onclick = startQuiz;
 }
 
@@ -369,14 +481,19 @@ function refreshSetup() {
   const needsTables = marathon || (mode === "test" && (settings.ops.includes("mul") || settings.ops.includes("div")));
   const needsTimeLevel = mode === "test" && settings.ops.includes("time");
 
+  const arithSelected = settings.ops.some(o => o !== "time");
   $("ops-group").hidden = marathon;
+  $("qformat-group").hidden = !(mode === "test" && arithSelected);
   $("age-group").hidden = !kg;
   $("style-group").hidden = !kg;
   $("range-group").hidden = !needsRange;
   $("tables-group").hidden = !needsTables;
   $("tables-note").hidden = !marathon;
   $("timelevel-group").hidden = !needsTimeLevel;
+  $("clockmode-group").hidden = !needsTimeLevel;
+  $("timeinput-group").hidden = !needsTimeLevel;
   $("count-group").hidden = marathon;
+  $("btn-sound").textContent = settings.sound ? "🔊" : "🔇";
 
   // kindergarten only offers + and −
   document.querySelectorAll("#op-row .op-chip").forEach(c => {
@@ -393,6 +510,9 @@ function refreshSetup() {
   document.querySelectorAll("#age-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.age === settings.kgAge));
   document.querySelectorAll("#style-row .op-chip").forEach(c => c.classList.toggle("selected", c.dataset.style === settings.kgStyle));
   document.querySelectorAll("#timelevel-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.timelevel === settings.timeLevel));
+  document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.clock24 === "1") === settings.clock24));
+  document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
+  document.querySelectorAll("#qformat-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.qformat === settings.qFormat));
 
   let hint = "";
   if (!marathon && activeOps.length === 0) hint = T().hintOps;
@@ -415,6 +535,11 @@ function applyLang() {
   $("t-tables").textContent = t.tables;
   $("tables-note").textContent = t.tablesNote;
   $("t-timelevel").textContent = t.timeLevel;
+  $("t-clockmode").textContent = t.clockMode;
+  $("t-timeinput").textContent = t.timeInput;
+  $("t-qformat").textContent = t.qFormat;
+  $("t-hours").textContent = t.hours;
+  $("t-minutes").textContent = t.minutes;
   $("t-count").textContent = t.count;
   $("btn-start").textContent = t.start;
   $("t-score").textContent = t.score;
@@ -466,36 +591,57 @@ function buildQuestions() {
     range: settings.range,
     tables: [...settings.tables].sort((x, y) => x - y),
     timeLevel: settings.timeLevel,
-    weak: weakPool(settings.tables),
+    clock24: settings.clock24,
+    qFormat: settings.qFormat,
   };
+  cfg.weakQs = weakQuestions(cfg);
   const recent = [];
   return Array.from({ length: settings.count }, () => generateQuestion(cfg, recent));
 }
 
 function startQuiz() {
   const questions = buildQuestions();
-  quiz = { questions, index: 0, correct: 0, points: 0, missed: [], timerId: null, timerStart: 0, timerTotal: 1, locked: false, entry: "" };
+  quiz = { questions, mode: settings.mode, index: 0, correct: 0, points: 0, missed: [], timerId: null, timerStart: 0, timerTotal: 1, locked: false, entry: "" };
   showScreen("quiz");
   nextQuestion();
 }
 
 let quiz = null;
 
+function usesPick(q) {
+  return q.op === "time" && settings.timeInput === "pick";
+}
+
 function nextQuestion() {
   const q = quiz.questions[quiz.index];
   quiz.entry = "";
+  quiz.pickH = null;
+  quiz.pickM = null;
   quiz.locked = false;
   const qEl = $("question");
-  qEl.textContent = questionText(q);
-  qEl.classList.toggle("shapes", q.kgStyle === "shapes");
+  if (q.kgStyle === "shapes") {
+    qEl.innerHTML = shapesHTML(q);
+    qEl.classList.add("shapes");
+  } else {
+    qEl.textContent = questionText(q);
+    qEl.classList.remove("shapes");
+  }
   const clock = $("clock");
+  const daypart = $("daypart");
   if (q.op === "time") {
     clock.innerHTML = clockSVG(q.a, q.b);
     clock.hidden = false;
+    daypart.textContent = q.clock24 ? T()[daypartKey(q.a)] : "";
+    daypart.hidden = !q.clock24;
   } else {
     clock.hidden = true;
     clock.innerHTML = "";
+    daypart.hidden = true;
   }
+  const pick = usesPick(q);
+  $("numpad").hidden = pick;
+  $("time-pick").hidden = !pick;
+  if (pick) buildPickRows(q);
   $("answer-box").textContent = " ";
   $("answer-box").className = "answer-box";
   $("feedback").textContent = "";
@@ -503,6 +649,35 @@ function nextQuestion() {
   $("progress-text").textContent = `${quiz.index + 1} / ${quiz.questions.length}`;
   $("score-pill").textContent = `⭐ ${Math.round(quiz.points)}`;
   startTimer(timeFor(q));
+}
+
+/* ---- pick-style time input: a row of hours, a row of minutes ---- */
+function buildPickRows(q) {
+  const hours = Array.from({ length: q.clock24 ? 23 : 12 }, (_, i) => i + 1);
+  const minutes = settings.timeLevel === 1 ? [0, 15, 30, 45] : Array.from({ length: 12 }, (_, i) => i * 5);
+  fillPickRow("hour-row", hours, h => String(h), h => { quiz.pickH = h; pickUpdate(); });
+  fillPickRow("minute-row", minutes, m => String(m).padStart(2, "0"), m => { quiz.pickM = m; pickUpdate(); });
+  pickUpdate();
+}
+
+function fillPickRow(rowId, values, label, onTap) {
+  const row = $(rowId);
+  row.innerHTML = "";
+  for (const v of values) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pchip"; b.textContent = label(v);
+    b.onclick = () => { if (quiz && !quiz.locked) onTap(v); };
+    b.dataset.val = v;
+    row.appendChild(b);
+  }
+}
+
+function pickUpdate() {
+  const h = quiz.pickH, m = quiz.pickM;
+  document.querySelectorAll("#hour-row .pchip").forEach(b => b.classList.toggle("selected", +b.dataset.val === h));
+  document.querySelectorAll("#minute-row .pchip").forEach(b => b.classList.toggle("selected", +b.dataset.val === m));
+  $("answer-box").textContent = `${h == null ? "–" : h}:${m == null ? "––" : String(m).padStart(2, "0")}`;
+  $("pick-ok").disabled = h == null || m == null;
 }
 
 function startTimer(seconds) {
@@ -514,11 +689,16 @@ function startTimer(seconds) {
   const bar = $("timebar");
   bar.className = "timebar";
   bar.style.width = "100%";
+  $("time-left").textContent = seconds;
+  let lastTick = -1;
   quiz.timerId = setInterval(() => {
     const left = total - (performance.now() - start);
     const frac = Math.max(0, left / total);
+    const secLeft = Math.max(0, Math.ceil(left / 1000));
     bar.style.width = (frac * 100) + "%";
     bar.className = "timebar" + (frac < 0.25 ? " danger" : frac < 0.5 ? " warn" : "");
+    $("time-left").textContent = secLeft;
+    if (secLeft <= 5 && secLeft >= 1 && secLeft !== lastTick) { lastTick = secLeft; soundTick(); }
     if (left <= 0) { stopTimer(); onTimeout(); }
   }, 100);
 }
@@ -529,6 +709,7 @@ function stopTimer() {
 function onKey(key) {
   if (!quiz || quiz.locked) return;
   const q = quiz.questions[quiz.index];
+  if (usesPick(q)) return; // this question is answered with the hour/minute rows
   if (key === "back") quiz.entry = quiz.entry.slice(0, -1);
   else if (key === "ok") { if (quiz.entry !== "") submit(); return; }
   else if (quiz.entry.length < 4) quiz.entry += key;
@@ -540,7 +721,9 @@ function submit() {
   const frac = Math.max(0, 1 - (performance.now() - quiz.timerStart) / quiz.timerTotal);
   stopTimer();
   quiz.locked = true;
-  const given = q.op === "time" ? parseTimeEntry(quiz.entry) : parseInt(quiz.entry, 10);
+  const given = q.op === "time"
+    ? (usesPick(q) ? quiz.pickH * 100 + quiz.pickM : parseTimeEntry(quiz.entry))
+    : parseInt(quiz.entry, 10);
   if (given === q.answer) {
     // faster answers earn more: full question value instantly, half at the buzzer
     const maxPts = 1000 / quiz.questions.length;
@@ -595,6 +778,18 @@ function finishQuiz() {
   $("sub-score").textContent = `✓ ${quiz.correct} / ${total}`;
   $("cheer").textContent = T()["cheer" + stars];
 
+  const best = loadBest();
+  const bestLine = $("best-line");
+  if (score > (best[quiz.mode] || 0)) {
+    best[quiz.mode] = score;
+    saveBest(best);
+    bestLine.textContent = T().newRecord;
+    bestLine.classList.add("record");
+  } else {
+    bestLine.textContent = `${T().best}: ${best[quiz.mode] || 0}`;
+    bestLine.classList.remove("record");
+  }
+
   const missedWrap = $("missed-wrap");
   const list = $("missed-list");
   list.innerHTML = "";
@@ -603,7 +798,9 @@ function finishQuiz() {
       const li = document.createElement("li");
       li.textContent = q.op === "time"
         ? `🕐 ${answerText(q)}`
-        : `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ${q.answer}`;
+        : q.blank
+          ? `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ${q.result}`
+          : `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ${q.answer}`;
       list.appendChild(li);
     }
     missedWrap.hidden = false;
@@ -618,6 +815,9 @@ $("numpad").addEventListener("click", e => {
   const key = e.target.closest(".key");
   if (key) onKey(key.dataset.key);
 });
+$("pick-ok").onclick = () => {
+  if (quiz && !quiz.locked && quiz.pickH != null && quiz.pickM != null) submit();
+};
 document.addEventListener("keydown", e => {
   if (!$("screen-quiz").classList.contains("active")) return;
   if (/^[0-9]$/.test(e.key)) onKey(e.key);

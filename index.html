@@ -25,6 +25,7 @@
           <button class="lang-chip" data-lang="en" type="button">EN</button>
           <button class="lang-chip" data-lang="ar" type="button">ع</button>
           <button class="lang-chip" data-lang="de" type="button">DE</button>
+          <button class="lang-chip sound-btn" id="btn-sound" type="button">🔊</button>
         </div>
       </div>
 
@@ -61,6 +62,14 @@
         </div>
       </div>
 
+      <div class="setup-group" id="qformat-group" hidden>
+        <h2 id="t-qformat">Question style</h2>
+        <div class="chip-row" id="qformat-row">
+          <button class="chip" data-qformat="result" type="button" dir="ltr" data-t="fmtResult">Result only: 5 × 6 = ?</button>
+          <button class="chip" data-qformat="mixed" type="button" dir="ltr" data-t="fmtMixed">Mix in blanks: 5 × _ = 30</button>
+        </div>
+      </div>
+
       <div class="setup-group" id="range-group" hidden>
         <h2 id="t-range">Biggest answer (+ / −)</h2>
         <div class="chip-row" id="range-row"></div>
@@ -77,6 +86,22 @@
         <div class="chip-row" id="timelevel-row">
           <button class="chip" data-timelevel="1" type="button" data-t="level1">Easy: 00 15 30 45</button>
           <button class="chip" data-timelevel="2" type="button" data-t="level2">Every 5 minutes</button>
+        </div>
+      </div>
+
+      <div class="setup-group" id="clockmode-group" hidden>
+        <h2 id="t-clockmode">Clock type</h2>
+        <div class="chip-row" id="clockmode-row">
+          <button class="chip" data-clock24="0" type="button" data-t="c12">12-hour</button>
+          <button class="chip" data-clock24="1" type="button" data-t="c24">24-hour</button>
+        </div>
+      </div>
+
+      <div class="setup-group" id="timeinput-group" hidden>
+        <h2 id="t-timeinput">Answer the time by</h2>
+        <div class="chip-row" id="timeinput-row">
+          <button class="chip" data-timeinput="pick" type="button" data-t="inputPick">Picking buttons</button>
+          <button class="chip" data-timeinput="type" type="button" data-t="inputType">Typing</button>
         </div>
       </div>
 
@@ -99,11 +124,15 @@
         <div class="score-pill" id="score-pill" dir="ltr">⭐ 0</div>
       </div>
 
-      <div class="timebar-track"><div class="timebar" id="timebar"></div></div>
+      <div class="timebar-row" dir="ltr">
+        <div class="timebar-track"><div class="timebar" id="timebar"></div></div>
+        <div class="time-left" id="time-left">10</div>
+      </div>
 
       <div class="question-area">
         <div class="question" id="question" dir="ltr">7 × 8 = ?</div>
         <div class="clock-wrap" id="clock" hidden></div>
+        <div class="daypart" id="daypart" hidden></div>
         <div class="answer-box" id="answer-box" dir="ltr">&nbsp;</div>
         <div class="feedback" id="feedback"></div>
       </div>
@@ -122,6 +151,14 @@
         <button class="key" data-key="0" type="button">0</button>
         <button class="key key-ok" data-key="ok" type="button">✓</button>
       </div>
+
+      <div class="time-pick" id="time-pick" hidden dir="ltr">
+        <div class="pick-label" id="t-hours">Hours</div>
+        <div class="pick-row" id="hour-row"></div>
+        <div class="pick-label" id="t-minutes">Minutes</div>
+        <div class="pick-row" id="minute-row"></div>
+        <button class="key key-ok pick-ok" id="pick-ok" type="button" disabled>✓</button>
+      </div>
     </div>
   </section>
 
@@ -132,6 +169,7 @@
       <h1 id="t-score">Your score</h1>
       <div class="final-score" id="final-score" dir="ltr">850 <span class="of-1000">/ 1000</span></div>
       <div class="sub-score" id="sub-score" dir="ltr">✓ 9 / 10</div>
+      <div class="best-line" id="best-line"></div>
       <p class="cheer" id="cheer"></p>
 
       <div class="missed" id="missed-wrap" hidden>
