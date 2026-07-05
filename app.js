@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.4.1";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -1011,6 +1011,7 @@ function spawnMeteor() {
   const q = generateQuestion(game.cfg, game.recent);
   const el = document.createElement("div");
   el.className = "meteor";
+  el.dir = "ltr"; // equations always read left-to-right, even in the Arabic UI
   el.textContent = `${q.a} ${OP_SYMBOL[q.op]} ${q.b}`;
   el.style.left = (5 + Math.random() * 62) + "%";
   el.style.top = "-50px";
