@@ -1,12 +1,11 @@
 "use strict";
 
-const APP_VERSION = "1.4.3";
+const APP_VERSION = "1.5.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
 const COUNT_OPTIONS = [5, 10, 15, 20];
-const AGE_OPTIONS = [4, 5, 6, 7];
-const RANGE_BY_AGE = { 4: 5, 5: 10, 6: 15, 7: 20 };
+const KG_RANGE_OPTIONS = [5, 10, 15, 20]; // kindergarten "biggest answer" choices
 const KG_SHAPES_MAX = 10;                 // shapes stay countable
 const TABLE_MIN = 1, TABLE_MAX = 12;
 const WEAK_BIAS = 0.4;                    // chance a ×/÷ question is drawn from saved weak facts
@@ -26,7 +25,6 @@ const STRINGS = {
     ops: "Choose operations",
     add: "Add", sub: "Subtract", mul: "Multiply", div: "Divide", time: "Time",
     whatTime: "What time is it?",
-    age: "Age",
     style: "Show questions with", shapes: "Shapes", digits: "Digits",
     kgTimer: "Timer", timerOn: "⏱️ On", timerOff: "🚫 Off",
     kgSize: "Shape size", sizeS: "Small", sizeM: "Medium", sizeL: "Large",
@@ -73,7 +71,6 @@ const STRINGS = {
     ops: "اختر العمليات",
     add: "جمع", sub: "طرح", mul: "ضرب", div: "قسمة", time: "الوقت",
     whatTime: "كم الساعة الآن؟",
-    age: "العمر",
     style: "شكل الأسئلة", shapes: "أشكال", digits: "أرقام",
     kgTimer: "المؤقت", timerOn: "⏱️ يعمل", timerOff: "🚫 بدون",
     kgSize: "حجم الأشكال", sizeS: "صغير", sizeM: "وسط", sizeL: "كبير",
@@ -120,7 +117,6 @@ const STRINGS = {
     ops: "Rechenarten wählen",
     add: "Plus", sub: "Minus", mul: "Mal", div: "Geteilt", time: "Uhrzeit",
     whatTime: "Wie spät ist es?",
-    age: "Alter",
     style: "Aufgaben zeigen mit", shapes: "Bildern", digits: "Zahlen",
     kgTimer: "Zeitlimit", timerOn: "⏱️ An", timerOff: "🚫 Aus",
     kgSize: "Größe der Bilder", sizeS: "Klein", sizeM: "Mittel", sizeL: "Groß",
@@ -168,7 +164,7 @@ const DEFAULTS = {
   lang: "en", mode: "test",
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
-  kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
+  kgRange: 10, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
   sound: true, autoSubmit: true, difficulty: "medium", gameScore: 700,
 };
 let settings = loadSettings();
@@ -191,7 +187,8 @@ function loadSettings() {
       clock24: s.clock24 === true,
       timeInput: s.timeInput === "pick" ? "pick" : "type",
       qFormat: s.qFormat === "mixed" ? "mixed" : "result",
-      kgAge: AGE_OPTIONS.includes(s.kgAge) ? s.kgAge : DEFAULTS.kgAge,
+      kgRange: KG_RANGE_OPTIONS.includes(s.kgRange) ? s.kgRange
+        : ({ 4: 5, 5: 10, 6: 15, 7: 20 }[s.kgAge] || DEFAULTS.kgRange), // migrate old "age" setting
       kgOps: kgOps.length ? kgOps : [...DEFAULTS.kgOps],
       kgStyle: s.kgStyle === "digits" ? "digits" : "shapes",
       kgTimer: s.kgTimer !== false,
@@ -488,7 +485,7 @@ function makeChips(rowId, values, dataKey, onTap) {
 function buildSetup() {
   makeChips("range-row", RANGE_OPTIONS, "range", v => { settings.range = v; });
   makeChips("count-row", COUNT_OPTIONS, "count", v => { settings.count = v; });
-  makeChips("age-row", AGE_OPTIONS, "age", v => { settings.kgAge = v; });
+  makeChips("kgrange-row", KG_RANGE_OPTIONS, "kgrange", v => { settings.kgRange = v; });
   makeChips("tables-row", Array.from({ length: TABLE_MAX }, (_, i) => i + 1), "table", v => {
     const i = settings.tables.indexOf(v);
     i >= 0 ? settings.tables.splice(i, 1) : settings.tables.push(v);
@@ -559,7 +556,7 @@ function refreshSetup() {
   const arithSelected = settings.ops.some(o => o !== "time");
   $("ops-group").hidden = marathon;
   $("qformat-group").hidden = !(mode === "test" && arithSelected);
-  $("age-group").hidden = !kg;
+  $("kgrange-group").hidden = !kg;
   $("style-group").hidden = !kg;
   $("kgsize-group").hidden = !(kg && settings.kgStyle === "shapes");
   $("kgtimer-group").hidden = !kg;
@@ -585,7 +582,7 @@ function refreshSetup() {
   document.querySelectorAll("#range-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.range === settings.range));
   document.querySelectorAll("#tables-row .chip").forEach(c => c.classList.toggle("selected", settings.tables.includes(+c.dataset.table)));
   document.querySelectorAll("#count-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.count === settings.count));
-  document.querySelectorAll("#age-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.age === settings.kgAge));
+  document.querySelectorAll("#kgrange-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.kgrange === settings.kgRange));
   document.querySelectorAll("#style-row .op-chip").forEach(c => c.classList.toggle("selected", c.dataset.style === settings.kgStyle));
   document.querySelectorAll("#kgtimer-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.kgtimer === "1") === settings.kgTimer));
   document.querySelectorAll("#kgsize-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.kgsize === settings.kgSize));
@@ -614,7 +611,7 @@ function applyLang() {
   $("t-title").textContent = t.title;
   $("t-mode").textContent = t.mode;
   $("t-ops").textContent = t.ops;
-  $("t-age").textContent = t.age;
+  $("t-kgrange").textContent = t.range;
   $("t-style").textContent = t.style;
   $("t-kgtimer").textContent = t.kgTimer;
   $("t-kgsize").textContent = t.kgSize;
@@ -669,8 +666,8 @@ function buildQuestions() {
 
   if (settings.mode === "kg") {
     const range = settings.kgStyle === "shapes"
-      ? Math.min(RANGE_BY_AGE[settings.kgAge], KG_SHAPES_MAX)
-      : RANGE_BY_AGE[settings.kgAge];
+      ? Math.min(settings.kgRange, KG_SHAPES_MAX)
+      : settings.kgRange;
     const cfg = { ops: [...settings.kgOps], range };
     const recent = [];
     return Array.from({ length: settings.count }, () => {
@@ -958,7 +955,7 @@ function gameCfg() {
   if (!ops.length) ops = ["add"];
   const cfg = {
     ops,
-    range: settings.mode === "kg" ? RANGE_BY_AGE[settings.kgAge] : settings.range,
+    range: settings.mode === "kg" ? settings.kgRange : settings.range,
     tables: settings.tables.length ? [...settings.tables] : [2, 3, 4, 5],
     factorMax: settings.factorMax,
     qFormat: "result",
