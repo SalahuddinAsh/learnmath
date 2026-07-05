@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.2.1";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500];
@@ -415,7 +415,8 @@ function clockSVG(h, m, night) {
   return parts.join("");
 }
 
-function isNightHour(q) { return !!q.clock24 && (q.a >= 18 || q.a < 6); }
+// on the 24h clock, every hour from 12:00 on shows the dark face
+function isNightHour(q) { return !!q.clock24 && q.a >= 12; }
 
 /* ================= sounds (tiny WebAudio blips) ================= */
 let audioCtx = null;
@@ -744,6 +745,8 @@ function pickUpdate() {
   document.querySelectorAll("#minute-row .pchip").forEach(b => b.classList.toggle("selected", +b.dataset.val === m));
   $("answer-box").textContent = `${h == null ? "–" : h}:${m == null ? "––" : String(m).padStart(2, "0")}`;
   $("pick-ok").disabled = h == null || m == null;
+  // instant mode: submit as soon as both hour and minute are chosen
+  if (settings.autoSubmit && h != null && m != null && !quiz.locked) submit();
 }
 
 function startTimer(seconds) {
