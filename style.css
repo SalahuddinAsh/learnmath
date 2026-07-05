@@ -70,6 +70,7 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 }
 .big-btn:active { transform: scale(.97); }
 .big-btn:disabled { opacity: .4; box-shadow: none; cursor: default; }
+.big-btn[hidden] { display: none; }
 .big-btn.secondary { background: #f0edff; color: #7c5cff; box-shadow: none; margin-top: 12px; font-size: 1.2rem; padding: 14px; }
 
 .hint { text-align: center; color: #9a95c0; font-size: .9rem; min-height: 1.2em; margin: 12px 0 0; }

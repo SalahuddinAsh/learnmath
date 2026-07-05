@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.4.1";
+const APP_VERSION = "1.4.2";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -968,6 +968,7 @@ function gameCfg() {
 }
 
 function startGame() {
+  if ($("btn-play-game").hidden) return; // no ticket, no game
   $("btn-play-game").hidden = true; // the ticket is spent
   document.querySelectorAll("#sky .meteor").forEach(m => m.remove());
   $("game-over").hidden = true;
