@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.4.2";
+const APP_VERSION = "1.4.3";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -1034,7 +1034,14 @@ function meteorLanded(m) {
   game.lives--;
   updateGameHud();
   soundBad();
-  if (game.lives <= 0) endGame();
+  if (game.lives <= 0) { endGame(); return; }
+  // fresh sky after losing a life: clear everything, keep the pace,
+  // and leave a short breather before meteors fall again
+  for (const other of game.meteors) other.el.remove();
+  game.meteors = [];
+  game.entry = "";
+  $("game-entry").textContent = " ";
+  game.sinceSpawn = -1500;
 }
 
 function blast(m) {
