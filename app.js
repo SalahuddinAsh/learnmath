@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500];
@@ -52,6 +52,7 @@ const STRINGS = {
     timeInput: "Answer the time by", inputPick: "Picking buttons", inputType: "Typing",
     qFormat: "Question style",
     fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
+    auto: "Answer entry", autoOn: "⚡ Instant", autoOff: "✓ With OK button",
     hours: "Hours", minutes: "Minutes",
     morning: "in the morning ☀️", afternoon: "in the afternoon 🌇", evening: "in the evening 🌙",
     count: "How many questions?",
@@ -91,6 +92,7 @@ const STRINGS = {
     timeInput: "طريقة إجابة الوقت", inputPick: "اختيار الأزرار", inputType: "كتابة",
     qFormat: "نمط الأسئلة",
     fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
+    auto: "إدخال الإجابة", autoOn: "⚡ فوري", autoOff: "✓ بزر التأكيد",
     hours: "الساعات", minutes: "الدقائق",
     morning: "صباحًا ☀️", afternoon: "بعد الظهر 🌇", evening: "مساءً 🌙",
     count: "كم عدد الأسئلة؟",
@@ -130,6 +132,7 @@ const STRINGS = {
     timeInput: "Uhrzeit eingeben per", inputPick: "Auswählen", inputType: "Tippen",
     qFormat: "Aufgabenstil",
     fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
+    auto: "Antwort-Eingabe", autoOn: "⚡ Sofort", autoOff: "✓ Mit OK-Taste",
     hours: "Stunden", minutes: "Minuten",
     morning: "morgens ☀️", afternoon: "nachmittags 🌇", evening: "abends 🌙",
     count: "Wie viele Aufgaben?",
@@ -157,7 +160,7 @@ const DEFAULTS = {
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
   kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
-  sound: true,
+  sound: true, autoSubmit: true,
 };
 let settings = loadSettings();
 
@@ -185,6 +188,7 @@ function loadSettings() {
       kgTimer: s.kgTimer !== false,
       kgSize: ["s", "m", "l"].includes(s.kgSize) ? s.kgSize : DEFAULTS.kgSize,
       sound: s.sound !== false,
+      autoSubmit: s.autoSubmit !== false,
     };
   } catch { return { ...DEFAULTS }; }
 }
@@ -384,28 +388,36 @@ function parseTimeEntry(entry) {
 }
 
 /* ================= analog clock (SVG) ================= */
-function clockSVG(h, m) {
+// night: dark clock face for evening hours on the 24h clock
+function clockSVG(h, m, night) {
+  const face = night ? "#1e2a4a" : "#fff";
+  const majorTick = night ? "#a5b4fc" : "#7c5cff";
+  const minorTick = night ? "#46538a" : "#d5cdfa";
+  const numbers = night ? "#f1f5f9" : "#2d2a45";
+  const hourHand = night ? "#f8fafc" : "#2d2a45";
   const parts = [];
   parts.push(`<svg viewBox="0 0 200 200" role="img">`);
-  parts.push(`<circle cx="100" cy="100" r="94" fill="#fff" stroke="#7c5cff" stroke-width="8"/>`);
+  parts.push(`<circle cx="100" cy="100" r="94" fill="${face}" stroke="#7c5cff" stroke-width="8"/>`);
   for (let i = 0; i < 60; i++) {
     const major = i % 5 === 0;
     const a = (i * 6) * Math.PI / 180;
     const r1 = major ? 78 : 84, r2 = 88;
-    parts.push(`<line x1="${100 + r1 * Math.sin(a)}" y1="${100 - r1 * Math.cos(a)}" x2="${100 + r2 * Math.sin(a)}" y2="${100 - r2 * Math.cos(a)}" stroke="${major ? "#7c5cff" : "#d5cdfa"}" stroke-width="${major ? 3 : 1.5}" stroke-linecap="round"/>`);
+    parts.push(`<line x1="${100 + r1 * Math.sin(a)}" y1="${100 - r1 * Math.cos(a)}" x2="${100 + r2 * Math.sin(a)}" y2="${100 - r2 * Math.cos(a)}" stroke="${major ? majorTick : minorTick}" stroke-width="${major ? 3 : 1.5}" stroke-linecap="round"/>`);
   }
   for (let n = 1; n <= 12; n++) {
     const a = (n * 30) * Math.PI / 180;
-    parts.push(`<text x="${100 + 64 * Math.sin(a)}" y="${100 - 64 * Math.cos(a)}" font-size="19" font-weight="800" fill="#2d2a45" text-anchor="middle" dominant-baseline="central" font-family="inherit">${n}</text>`);
+    parts.push(`<text x="${100 + 64 * Math.sin(a)}" y="${100 - 64 * Math.cos(a)}" font-size="19" font-weight="800" fill="${numbers}" text-anchor="middle" dominant-baseline="central" font-family="inherit">${n}</text>`);
   }
   const hourDeg = ((h % 12) + m / 60) * 30;
   const minDeg = m * 6;
-  parts.push(`<line x1="100" y1="100" x2="100" y2="62" stroke="#2d2a45" stroke-width="8" stroke-linecap="round" transform="rotate(${hourDeg} 100 100)"/>`);
+  parts.push(`<line x1="100" y1="100" x2="100" y2="62" stroke="${hourHand}" stroke-width="8" stroke-linecap="round" transform="rotate(${hourDeg} 100 100)"/>`);
   parts.push(`<line x1="100" y1="100" x2="100" y2="34" stroke="#ff6b81" stroke-width="5" stroke-linecap="round" transform="rotate(${minDeg} 100 100)"/>`);
   parts.push(`<circle cx="100" cy="100" r="6" fill="#ff9f43"/>`);
   parts.push(`</svg>`);
   return parts.join("");
 }
+
+function isNightHour(q) { return !!q.clock24 && (q.a >= 18 || q.a < 6); }
 
 /* ================= sounds (tiny WebAudio blips) ================= */
 let audioCtx = null;
@@ -486,6 +498,9 @@ function buildSetup() {
   document.querySelectorAll("#factor-row .chip").forEach(chip => {
     chip.onclick = () => { settings.factorMax = +chip.dataset.factor; refreshSetup(); };
   });
+  document.querySelectorAll("#auto-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.autoSubmit = chip.dataset.auto === "1"; refreshSetup(); };
+  });
   document.querySelectorAll(".lang-chip:not(.sound-btn)").forEach(chip => {
     chip.onclick = () => { settings.lang = chip.dataset.lang; applyLang(); refreshSetup(); };
   });
@@ -541,6 +556,7 @@ function refreshSetup() {
   document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
   document.querySelectorAll("#qformat-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.qformat === settings.qFormat));
   document.querySelectorAll("#factor-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.factor === settings.factorMax));
+  document.querySelectorAll("#auto-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.auto === "1") === settings.autoSubmit));
 
   let hint = "";
   if (!marathon && activeOps.length === 0) hint = T().hintOps;
@@ -569,6 +585,7 @@ function applyLang() {
   $("t-clockmode").textContent = t.clockMode;
   $("t-timeinput").textContent = t.timeInput;
   $("t-qformat").textContent = t.qFormat;
+  $("t-auto").textContent = t.auto;
   $("t-hours").textContent = t.hours;
   $("t-minutes").textContent = t.minutes;
   $("t-count").textContent = t.count;
@@ -660,10 +677,11 @@ function nextQuestion() {
     qEl.textContent = questionText(q);
     qEl.classList.remove("shapes");
   }
+  $("quiz-wrap").classList.toggle("time-side", q.op === "time");
   const clock = $("clock");
   const daypart = $("daypart");
   if (q.op === "time") {
-    clock.innerHTML = clockSVG(q.a, q.b);
+    clock.innerHTML = clockSVG(q.a, q.b, isNightHour(q));
     clock.hidden = false;
     daypart.textContent = q.clock24 ? T()[daypartKey(q.a)] : "";
     daypart.hidden = !q.clock24;
@@ -752,9 +770,17 @@ function onKey(key) {
   if (!quiz || quiz.locked) return;
   const q = quiz.questions[quiz.index];
   if (usesPick(q)) return; // this question is answered with the hour/minute rows
-  if (key === "back") quiz.entry = quiz.entry.slice(0, -1);
+  if (key === "back") { quiz.entry = quiz.entry.slice(0, -1); }
   else if (key === "ok") { if (quiz.entry !== "") submit(); return; }
-  else if (quiz.entry.length < 4) quiz.entry += key;
+  else if (quiz.entry.length < 4) {
+    quiz.entry += key;
+    // instant mode: submit as soon as the expected number of digits is typed
+    if (settings.autoSubmit && quiz.entry.length >= String(q.answer).length) {
+      $("answer-box").textContent = entryDisplay(quiz.entry, q);
+      submit();
+      return;
+    }
+  }
   $("answer-box").textContent = entryDisplay(quiz.entry, q) || " ";
 }
 

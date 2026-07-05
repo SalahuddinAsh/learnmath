@@ -156,8 +156,28 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
   transition: transform .06s;
 }
 .pchip:active { transform: scale(.92); }
-.pchip.selected { background: #7c5cff; color: #fff; }
+/* hours and minutes get distinct colors so kids find the right row fast */
+#hour-row .pchip { background: #ede9ff; color: #4c3ba8; }
+#hour-row .pchip.selected { background: #7c5cff; color: #fff; }
+#minute-row .pchip { background: #ffeeda; color: #a05716; }
+#minute-row .pchip.selected { background: #f97316; color: #fff; }
+#t-hours { color: #d8ceff; }
+#t-minutes { color: #ffe3c2; }
 .pick-ok { width: 100%; height: 58px; border-radius: 16px; font-size: 1.7rem; }
+
+/* clock questions: clock on one side, answer input on the other — no scrolling */
+.quiz-wrap.time-side { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr; gap: 12px; align-items: start; max-width: 760px; }
+.quiz-wrap.time-side .quiz-top,
+.quiz-wrap.time-side .timebar-row { grid-column: 1 / -1; }
+.quiz-wrap.time-side .question-area { grid-column: 1; grid-row: 3; }
+.quiz-wrap.time-side .numpad,
+.quiz-wrap.time-side .time-pick { grid-column: 2; grid-row: 3; margin-top: 0; }
+.quiz-wrap.time-side .clock-wrap svg { width: clamp(150px, 34vw, 240px); }
+.quiz-wrap.time-side .numpad .key { height: clamp(50px, 7.5dvh, 72px); }
+@media (max-width: 560px) {
+  /* narrow screens: fall back to the stacked layout */
+  .quiz-wrap.time-side { display: flex; }
+}
 
 /* ============ results ============ */
 .results-card { text-align: center; }

@@ -135,6 +135,14 @@
         <div class="chip-row" id="count-row"></div>
       </div>
 
+      <div class="setup-group" id="auto-group">
+        <h2 id="t-auto">Answer entry</h2>
+        <div class="chip-row" id="auto-row">
+          <button class="chip" data-auto="1" type="button" data-t="autoOn">⚡ Instant</button>
+          <button class="chip" data-auto="0" type="button" data-t="autoOff">✓ With OK</button>
+        </div>
+      </div>
+
       <button id="btn-start" class="big-btn" type="button" disabled>Start! 🚀</button>
       <p id="setup-hint" class="hint"></p>
       <p class="version" id="app-version" dir="ltr"></p>
@@ -143,7 +151,7 @@
 
   <!-- ============ QUIZ SCREEN ============ -->
   <section id="screen-quiz" class="screen">
-    <div class="quiz-wrap">
+    <div class="quiz-wrap" id="quiz-wrap">
       <div class="quiz-top">
         <button id="btn-quit" class="quit-btn" type="button">✕</button>
         <div class="progress-text" id="progress-text" dir="ltr">1 / 10</div>
