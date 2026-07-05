@@ -31,6 +31,7 @@
           <button class="chip op-chip" data-op="sub"  type="button"><span class="op-sym">−</span><span class="op-name" data-t="sub">Subtract</span></button>
           <button class="chip op-chip" data-op="mul"  type="button"><span class="op-sym">×</span><span class="op-name" data-t="mul">Multiply</span></button>
           <button class="chip op-chip" data-op="div"  type="button"><span class="op-sym">÷</span><span class="op-name" data-t="div">Divide</span></button>
+          <button class="chip op-chip" data-op="time" type="button"><span class="op-sym">🕐</span><span class="op-name" data-t="time">Time</span></button>
         </div>
       </div>
 
@@ -67,6 +68,7 @@
 
       <div class="question-area">
         <div class="question" id="question" dir="ltr">7 × 8 = ?</div>
+        <div class="clock-wrap" id="clock" hidden></div>
         <div class="answer-box" id="answer-box" dir="ltr">&nbsp;</div>
         <div class="feedback" id="feedback"></div>
       </div>
@@ -93,7 +95,8 @@
     <div class="card results-card">
       <div class="stars" id="stars">⭐⭐⭐</div>
       <h1 id="t-score">Your score</h1>
-      <div class="final-score" id="final-score" dir="ltr">9 / 10</div>
+      <div class="final-score" id="final-score" dir="ltr">850 <span class="of-1000">/ 1000</span></div>
+      <div class="sub-score" id="sub-score" dir="ltr">✓ 9 / 10</div>
       <p class="cheer" id="cheer"></p>
 
       <div class="missed" id="missed-wrap" hidden>
