@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500];
@@ -12,23 +12,11 @@ const TABLE_MIN = 1, TABLE_MAX = 12;
 const WEAK_BIAS = 0.4;                    // chance a ×/÷ question is drawn from saved weak facts
 const EMOJIS = ["🍎", "⭐", "🎈", "🐟", "🦋", "🍓", "⚽", "🐥"];
 
-// per-question time (seconds), scaled by difficulty
-function timeFor(q) {
-  if (q.kgStyle === "shapes") return 20;  // counting shapes takes a while
-  if (q.kg) return 12;
-  if (q.op === "time") return 15;
-  if (q.op === "add" || q.op === "sub") {
-    const big = Math.max(q.a, q.b, q.answer);
-    if (big > 100) return 16;
-    if (big > 20) return 12;
-    return 8;
-  }
-  // mul / div: difficulty follows the larger factor of the underlying fact
-  const factor = Math.max(q.fa, q.fb);
-  let t = factor <= 5 ? 8 : factor <= 9 ? 12 : 15;
-  if (q.op === "div") t += 3;
-  return t;
-}
+// per-question time comes from the chosen difficulty; on easy, answering
+// after the buzzer still counts but earns fewer points
+const DIFF_SECONDS = { easy: 30, medium: 20, hard: 10 };
+const OVERTIME_FACTOR = 0.3; // share of the question's points for an overtime answer
+function timeFor() { return DIFF_SECONDS[settings.difficulty] || 20; }
 
 /* ================= i18n ================= */
 const STRINGS = {
@@ -53,6 +41,9 @@ const STRINGS = {
     qFormat: "Question style",
     fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
     auto: "Answer entry", autoOn: "⚡ Instant", autoOff: "✓ With OK button",
+    diff: "Difficulty", diffEasy: "😌 Easy · 30s", diffMed: "🙂 Medium · 20s", diffHard: "🔥 Hard · 10s",
+    diffNote: "Easy: answering after time runs out still counts, for fewer points",
+    overtime: "⏰ Keep going — fewer points now",
     hours: "Hours", minutes: "Minutes",
     morning: "in the morning ☀️", afternoon: "in the afternoon 🌇", evening: "in the evening 🌙",
     count: "How many questions?",
@@ -93,6 +84,9 @@ const STRINGS = {
     qFormat: "نمط الأسئلة",
     fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
     auto: "إدخال الإجابة", autoOn: "⚡ فوري", autoOff: "✓ بزر التأكيد",
+    diff: "مستوى الصعوبة", diffEasy: "😌 سهل · 30 ث", diffMed: "🙂 وسط · 20 ث", diffHard: "🔥 صعب · 10 ث",
+    diffNote: "سهل: يمكن الإجابة بعد انتهاء الوقت لكن بنقاط أقل",
+    overtime: "⏰ أكمل — النقاط أقل الآن",
     hours: "الساعات", minutes: "الدقائق",
     morning: "صباحًا ☀️", afternoon: "بعد الظهر 🌇", evening: "مساءً 🌙",
     count: "كم عدد الأسئلة؟",
@@ -133,6 +127,9 @@ const STRINGS = {
     qFormat: "Aufgabenstil",
     fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
     auto: "Antwort-Eingabe", autoOn: "⚡ Sofort", autoOff: "✓ Mit OK-Taste",
+    diff: "Schwierigkeit", diffEasy: "😌 Leicht · 30s", diffMed: "🙂 Mittel · 20s", diffHard: "🔥 Schwer · 10s",
+    diffNote: "Leicht: Antworten nach Ablauf zählt noch, gibt aber weniger Punkte",
+    overtime: "⏰ Weiter — jetzt weniger Punkte",
     hours: "Stunden", minutes: "Minuten",
     morning: "morgens ☀️", afternoon: "nachmittags 🌇", evening: "abends 🌙",
     count: "Wie viele Aufgaben?",
@@ -160,7 +157,7 @@ const DEFAULTS = {
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
   timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
   kgAge: 5, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
-  sound: true, autoSubmit: true,
+  sound: true, autoSubmit: true, difficulty: "medium",
 };
 let settings = loadSettings();
 
@@ -189,6 +186,7 @@ function loadSettings() {
       kgSize: ["s", "m", "l"].includes(s.kgSize) ? s.kgSize : DEFAULTS.kgSize,
       sound: s.sound !== false,
       autoSubmit: s.autoSubmit !== false,
+      difficulty: ["easy", "medium", "hard"].includes(s.difficulty) ? s.difficulty : DEFAULTS.difficulty,
     };
   } catch { return { ...DEFAULTS }; }
 }
@@ -501,6 +499,9 @@ function buildSetup() {
   document.querySelectorAll("#auto-row .chip").forEach(chip => {
     chip.onclick = () => { settings.autoSubmit = chip.dataset.auto === "1"; refreshSetup(); };
   });
+  document.querySelectorAll("#diff-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.difficulty = chip.dataset.diff; refreshSetup(); };
+  });
   document.querySelectorAll(".lang-chip:not(.sound-btn)").forEach(chip => {
     chip.onclick = () => { settings.lang = chip.dataset.lang; applyLang(); refreshSetup(); };
   });
@@ -557,6 +558,8 @@ function refreshSetup() {
   document.querySelectorAll("#qformat-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.qformat === settings.qFormat));
   document.querySelectorAll("#factor-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.factor === settings.factorMax));
   document.querySelectorAll("#auto-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.auto === "1") === settings.autoSubmit));
+  $("diff-group").hidden = kg && !settings.kgTimer;
+  document.querySelectorAll("#diff-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.diff === settings.difficulty));
 
   let hint = "";
   if (!marathon && activeOps.length === 0) hint = T().hintOps;
@@ -586,6 +589,8 @@ function applyLang() {
   $("t-timeinput").textContent = t.timeInput;
   $("t-qformat").textContent = t.qFormat;
   $("t-auto").textContent = t.auto;
+  $("t-diff").textContent = t.diff;
+  $("diff-note").textContent = t.diffNote;
   $("t-hours").textContent = t.hours;
   $("t-minutes").textContent = t.minutes;
   $("t-count").textContent = t.count;
@@ -669,6 +674,7 @@ function nextQuestion() {
   quiz.pickH = null;
   quiz.pickM = null;
   quiz.locked = false;
+  quiz.overtime = false;
   const qEl = $("question");
   if (q.kgStyle === "shapes") {
     qEl.innerHTML = shapesHTML(q);
@@ -759,8 +765,22 @@ function startTimer(seconds) {
     bar.className = "timebar" + (frac < 0.25 ? " danger" : frac < 0.5 ? " warn" : "");
     $("time-left").textContent = secLeft;
     if (secLeft <= 5 && secLeft >= 1 && secLeft !== lastTick) { lastTick = secLeft; soundTick(); }
-    if (left <= 0) { stopTimer(); onTimeout(); }
+    if (left <= 0) {
+      stopTimer();
+      // easy mode keeps accepting answers after the buzzer, for fewer points
+      if (settings.difficulty === "easy") enterOvertime();
+      else onTimeout();
+    }
   }, 100);
+}
+
+function enterOvertime() {
+  quiz.overtime = true;
+  $("timebar").style.width = "0%";
+  $("timebar").className = "timebar danger";
+  $("time-left").textContent = "0";
+  $("feedback").textContent = T().overtime;
+  $("feedback").className = "feedback";
 }
 function stopTimer() {
   if (quiz && quiz.timerId) { clearInterval(quiz.timerId); quiz.timerId = null; }
@@ -793,9 +813,10 @@ function submit() {
     ? (usesPick(q) ? quiz.pickH * 100 + quiz.pickM : parseTimeEntry(quiz.entry))
     : parseInt(quiz.entry, 10);
   if (given === q.answer) {
-    // faster answers earn more: full question value instantly, half at the buzzer
+    // faster answers earn more: full question value instantly, half at the buzzer,
+    // and a small share for overtime answers on easy difficulty
     const maxPts = 1000 / quiz.questions.length;
-    const pts = maxPts * (0.5 + 0.5 * frac);
+    const pts = quiz.overtime ? maxPts * OVERTIME_FACTOR : maxPts * (0.5 + 0.5 * frac);
     quiz.correct++;
     quiz.points += pts;
     recordResult(q, true);
