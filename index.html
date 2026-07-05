@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Math Stars</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Math Stars">
+  <meta name="theme-color" content="#7c5cff">
+</head>
+<body>
+
+  <!-- ============ SETUP SCREEN ============ -->
+  <section id="screen-setup" class="screen active">
+    <div class="card">
+      <div class="setup-top">
+        <h1 id="t-title">Math Stars ⭐</h1>
+        <button id="btn-lang" class="lang-btn" type="button">العربية</button>
+      </div>
+
+      <div class="setup-group">
+        <h2 id="t-ops">Choose operations</h2>
+        <div class="chip-row" id="op-row">
+          <button class="chip op-chip" data-op="add"  type="button"><span class="op-sym">+</span><span class="op-name" data-t="add">Add</span></button>
+          <button class="chip op-chip" data-op="sub"  type="button"><span class="op-sym">−</span><span class="op-name" data-t="sub">Subtract</span></button>
+          <button class="chip op-chip" data-op="mul"  type="button"><span class="op-sym">×</span><span class="op-name" data-t="mul">Multiply</span></button>
+          <button class="chip op-chip" data-op="div"  type="button"><span class="op-sym">÷</span><span class="op-name" data-t="div">Divide</span></button>
+        </div>
+      </div>
+
+      <div class="setup-group" id="range-group" hidden>
+        <h2 id="t-range">Biggest answer (+ / −)</h2>
+        <div class="chip-row" id="range-row"></div>
+      </div>
+
+      <div class="setup-group" id="tables-group" hidden>
+        <h2 id="t-tables">Numbers to practice (× / ÷)</h2>
+        <div class="chip-row tables" id="tables-row"></div>
+      </div>
+
+      <div class="setup-group">
+        <h2 id="t-count">How many questions?</h2>
+        <div class="chip-row" id="count-row"></div>
+      </div>
+
+      <button id="btn-start" class="big-btn" type="button" disabled>Start! 🚀</button>
+      <p id="setup-hint" class="hint"></p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ SCREEN ============ -->
+  <section id="screen-quiz" class="screen">
+    <div class="quiz-wrap">
+      <div class="quiz-top">
+        <button id="btn-quit" class="quit-btn" type="button">✕</button>
+        <div class="progress-text" id="progress-text" dir="ltr">1 / 10</div>
+        <div class="score-pill" id="score-pill" dir="ltr">⭐ 0</div>
+      </div>
+
+      <div class="timebar-track"><div class="timebar" id="timebar"></div></div>
+
+      <div class="question-area">
+        <div class="question" id="question" dir="ltr">7 × 8 = ?</div>
+        <div class="answer-box" id="answer-box" dir="ltr">&nbsp;</div>
+        <div class="feedback" id="feedback"></div>
+      </div>
+
+      <div class="numpad" id="numpad" dir="ltr">
+        <button class="key" data-key="1" type="button">1</button>
+        <button class="key" data-key="2" type="button">2</button>
+        <button class="key" data-key="3" type="button">3</button>
+        <button class="key" data-key="4" type="button">4</button>
+        <button class="key" data-key="5" type="button">5</button>
+        <button class="key" data-key="6" type="button">6</button>
+        <button class="key" data-key="7" type="button">7</button>
+        <button class="key" data-key="8" type="button">8</button>
+        <button class="key" data-key="9" type="button">9</button>
+        <button class="key key-back" data-key="back" type="button">⌫</button>
+        <button class="key" data-key="0" type="button">0</button>
+        <button class="key key-ok" data-key="ok" type="button">✓</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <section id="screen-results" class="screen">
+    <div class="card results-card">
+      <div class="stars" id="stars">⭐⭐⭐</div>
+      <h1 id="t-score">Your score</h1>
+      <div class="final-score" id="final-score" dir="ltr">9 / 10</div>
+      <p class="cheer" id="cheer"></p>
+
+      <div class="missed" id="missed-wrap" hidden>
+        <h2 id="t-review">Review these</h2>
+        <ul id="missed-list" dir="ltr"></ul>
+      </div>
+
+      <button id="btn-again" class="big-btn" type="button">Play again 🔁</button>
+      <button id="btn-settings" class="big-btn secondary" type="button">Change settings ⚙️</button>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
