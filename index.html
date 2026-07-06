@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Math Stars</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=1.5.1">
+  <link rel="stylesheet" href="style.css?v=1.6.0">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -117,8 +117,9 @@
       <div class="setup-group" id="clockmode-group" hidden>
         <h2 id="t-clockmode">Clock type</h2>
         <div class="chip-row" id="clockmode-row">
-          <button class="chip" data-clock24="0" type="button" data-t="c12">12-hour</button>
-          <button class="chip" data-clock24="1" type="button" data-t="c24">24-hour</button>
+          <button class="chip" data-cmode="12" type="button" data-t="c12">12-hour</button>
+          <button class="chip" data-cmode="24" type="button" data-t="c24">24-hour</button>
+          <button class="chip" data-cmode="dual" type="button" data-t="cDual">Two answers</button>
         </div>
       </div>
 
@@ -275,6 +276,6 @@
     </div>
   </section>
 
-  <script src="app.js?v=1.5.1"></script>
+  <script src="app.js?v=1.6.0"></script>
 </body>
 </html>

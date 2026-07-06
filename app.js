@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "1.6.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -34,7 +34,8 @@ const STRINGS = {
     tablesNote: "All questions in order: ×1 … ×10, then extra practice for tricky ones",
     timeLevel: "Clock difficulty",
     level1: "Easy: 00 · 15 · 30 · 45", level2: "Every 5 minutes",
-    clockMode: "Clock type", c12: "12-hour", c24: "24-hour",
+    clockMode: "Clock type", c12: "12-hour", c24: "24-hour", cDual: "Two answers: 7:15 + 19:15",
+    whatTime2: "What time is it? Give both answers!",
     timeInput: "Answer the time by", inputPick: "Picking buttons", inputType: "Typing",
     qFormat: "Question style",
     fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
@@ -80,7 +81,8 @@ const STRINGS = {
     tablesNote: "كل الأسئلة بالترتيب: ×1 … ×10، ثم تدريب إضافي على الأسئلة الصعبة",
     timeLevel: "مستوى الساعة",
     level1: "سهل: 00 · 15 · 30 · 45", level2: "كل 5 دقائق",
-    clockMode: "نوع الساعة", c12: "12 ساعة", c24: "24 ساعة",
+    clockMode: "نوع الساعة", c12: "12 ساعة", c24: "24 ساعة", cDual: "إجابتان: 7:15 و 19:15",
+    whatTime2: "كم الساعة؟ أعطِ الإجابتين!",
     timeInput: "طريقة إجابة الوقت", inputPick: "اختيار الأزرار", inputType: "كتابة",
     qFormat: "نمط الأسئلة",
     fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
@@ -126,7 +128,8 @@ const STRINGS = {
     tablesNote: "Alle Aufgaben der Reihe nach: ×1 … ×10, dann Extra-Übung für knifflige",
     timeLevel: "Uhr-Schwierigkeit",
     level1: "Leicht: 00 · 15 · 30 · 45", level2: "Alle 5 Minuten",
-    clockMode: "Uhrformat", c12: "12-Stunden", c24: "24-Stunden",
+    clockMode: "Uhrformat", c12: "12-Stunden", c24: "24-Stunden", cDual: "Zwei Antworten: 7:15 + 19:15",
+    whatTime2: "Wie spät ist es? Nenne beide Antworten!",
     timeInput: "Uhrzeit eingeben per", inputPick: "Auswählen", inputType: "Tippen",
     qFormat: "Aufgabenstil",
     fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
@@ -163,7 +166,7 @@ const STRINGS = {
 const DEFAULTS = {
   lang: "en", mode: "test",
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
-  timeLevel: 1, clock24: false, timeInput: "type", qFormat: "result",
+  timeLevel: 1, clockMode: "12", timeInput: "type", qFormat: "result",
   kgRange: 10, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
   sound: true, autoSubmit: true, difficulty: "medium", gameScore: 700,
 };
@@ -184,7 +187,7 @@ function loadSettings() {
       count: COUNT_OPTIONS.includes(s.count) ? s.count : DEFAULTS.count,
       factorMax: s.factorMax === 12 ? 12 : 10,
       timeLevel: s.timeLevel === 2 ? 2 : 1,
-      clock24: s.clock24 === true,
+      clockMode: ["12", "24", "dual"].includes(s.clockMode) ? s.clockMode : (s.clock24 === true ? "24" : "12"),
       timeInput: s.timeInput === "pick" ? "pick" : "type",
       qFormat: s.qFormat === "mixed" ? "mixed" : "result",
       kgRange: KG_RANGE_OPTIONS.includes(s.kgRange) ? s.kgRange
@@ -278,9 +281,15 @@ function weakToQuestion(key, cfg) {
   const op = m[1], a = +m[2], b = +m[3];
   if (op === "add") return a + b <= cfg.range ? { op, a, b, answer: a + b } : null;
   if (op === "sub") return a <= cfg.range && b < a ? { op, a, b, answer: a - b } : null;
-  if (!cfg.clock24 && a > 12) return null;
   if (cfg.timeLevel === 1 && b % 15 !== 0) return null;
-  return { op: "time", a, b, clock24: !!cfg.clock24, answer: a * 100 + b };
+  const mode = cfg.clockMode || "12";
+  if (mode === "dual") {
+    const base = a > 12 ? a - 12 : a;
+    if (base < 1 || base > 11) return null;
+    return { op: "time", a: base, b, dual: true, answer: base * 100 + b, answer2: (base + 12) * 100 + b };
+  }
+  if (mode !== "24" && a > 12) return null;
+  return { op: "time", a, b, clock24: mode === "24", answer: a * 100 + b };
 }
 
 /* ================= high scores ================= */
@@ -320,10 +329,15 @@ function generateQuestion(cfg, recent) {
 function makeOne(op, cfg) {
   if (op === "time") {
     // read an analog clock; level 1 = quarter hours, level 2 = 5-minute steps.
-    // 24-hour clock shows a time-of-day badge and expects the converted hour.
-    const h = cfg.clock24 ? rand(1, 23) : rand(1, 12);
+    // "24": badge + converted hour. "dual": the face is ambiguous — both readings required.
+    const mode = cfg.clockMode || "12";
     const m = cfg.timeLevel === 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
-    return { op, a: h, b: m, clock24: !!cfg.clock24, answer: h * 100 + m }; // 3:15 -> 315
+    if (mode === "dual") {
+      const h = rand(1, 11); // skip 12 so the two answers are always distinct and < 24
+      return { op, a: h, b: m, dual: true, answer: h * 100 + m, answer2: (h + 12) * 100 + m };
+    }
+    const h = mode === "24" ? rand(1, 23) : rand(1, 12);
+    return { op, a: h, b: m, clock24: mode === "24", answer: h * 100 + m }; // 3:15 -> 315
   }
   if (op === "add") {
     const a = rand(1, Math.max(1, cfg.range - 1));
@@ -360,7 +374,7 @@ function toBlank(q) {
 }
 
 function questionText(q) {
-  if (q.op === "time") return T().whatTime;
+  if (q.op === "time") return q.dual ? T().whatTime2 : T().whatTime;
   if (q.blank) return `${q.a} ${OP_SYMBOL[q.op]} _ = ${q.result}`;
   return `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ?`;
 }
@@ -396,8 +410,10 @@ function fitShapes() {
 }
 window.addEventListener("resize", fitShapes);
 
+function fmtTime(v) { return `${Math.floor(v / 100)}:${String(v % 100).padStart(2, "0")}`; }
+
 function answerText(q) {
-  if (q.op === "time") return `${q.a}:${String(q.b).padStart(2, "0")}`;
+  if (q.op === "time") return q.dual ? `${fmtTime(q.answer)} / ${fmtTime(q.answer2)}` : fmtTime(q.answer);
   return String(q.answer);
 }
 
@@ -516,7 +532,7 @@ function buildSetup() {
     chip.onclick = () => { settings.timeLevel = +chip.dataset.timelevel; refreshSetup(); };
   });
   document.querySelectorAll("#clockmode-row .chip").forEach(chip => {
-    chip.onclick = () => { settings.clock24 = chip.dataset.clock24 === "1"; refreshSetup(); };
+    chip.onclick = () => { settings.clockMode = chip.dataset.cmode; refreshSetup(); };
   });
   document.querySelectorAll("#timeinput-row .chip").forEach(chip => {
     chip.onclick = () => { settings.timeInput = chip.dataset.timeinput; refreshSetup(); };
@@ -587,7 +603,7 @@ function refreshSetup() {
   document.querySelectorAll("#kgtimer-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.kgtimer === "1") === settings.kgTimer));
   document.querySelectorAll("#kgsize-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.kgsize === settings.kgSize));
   document.querySelectorAll("#timelevel-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.timelevel === settings.timeLevel));
-  document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", (c.dataset.clock24 === "1") === settings.clock24));
+  document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.cmode === settings.clockMode));
   document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
   document.querySelectorAll("#qformat-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.qformat === settings.qFormat));
   document.querySelectorAll("#factor-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.factor === settings.factorMax));
@@ -686,7 +702,7 @@ function buildQuestions() {
     tables: [...settings.tables].sort((x, y) => x - y),
     factorMax: settings.factorMax,
     timeLevel: settings.timeLevel,
-    clock24: settings.clock24,
+    clockMode: settings.clockMode,
     qFormat: settings.qFormat,
   };
   cfg.weakQs = weakQuestions(cfg);
@@ -736,6 +752,7 @@ function nextQuestion() {
     clock.innerHTML = "";
     daypart.hidden = true;
   }
+  quiz.dualLeft = q.dual ? new Set([q.answer, q.answer2]) : null;
   const pick = usesPick(q);
   $("numpad").hidden = pick;
   $("numpad").classList.toggle("no-ok", settings.autoSubmit);
@@ -755,13 +772,14 @@ function nextQuestion() {
     quiz.timerStart = performance.now();
     quiz.timerTotal = Infinity;
   } else {
-    startTimer(timeFor(q));
+    // two readings take longer than one
+    startTimer(q.dual ? Math.round(timeFor() * 1.5) : timeFor());
   }
 }
 
 /* ---- pick-style time input: a row of hours, a row of minutes ---- */
 function buildPickRows(q) {
-  const hours = Array.from({ length: q.clock24 ? 23 : 12 }, (_, i) => i + 1);
+  const hours = Array.from({ length: q.clock24 || q.dual ? 23 : 12 }, (_, i) => i + 1);
   const minutes = settings.timeLevel === 1 ? [0, 15, 30, 45] : Array.from({ length: 12 }, (_, i) => i * 5);
   fillPickRow("hour-row", hours, h => String(h), h => { quiz.pickH = h; pickUpdate(); });
   fillPickRow("minute-row", minutes, m => String(m).padStart(2, "0"), m => { quiz.pickM = m; pickUpdate(); });
@@ -839,7 +857,11 @@ function onKey(key) {
   else if (quiz.entry.length < 4) {
     quiz.entry += key;
     // instant mode: submit as soon as the expected number of digits is typed
-    if (settings.autoSubmit && quiz.entry.length >= String(q.answer).length) {
+    // (dual clock: either reading may come first, so match against both)
+    const full = q.dual
+      ? (quiz.dualLeft && quiz.dualLeft.has(parseTimeEntry(quiz.entry))) || quiz.entry.length >= 4
+      : quiz.entry.length >= String(q.answer).length;
+    if (settings.autoSubmit && full) {
       $("answer-box").textContent = entryDisplay(quiz.entry, q);
       submit();
       return;
@@ -850,13 +872,25 @@ function onKey(key) {
 
 function submit() {
   const q = quiz.questions[quiz.index];
-  const frac = Math.max(0, 1 - (performance.now() - quiz.timerStart) / quiz.timerTotal);
-  stopTimer();
-  quiz.locked = true;
   const given = q.op === "time"
     ? (usesPick(q) ? quiz.pickH * 100 + quiz.pickM : parseTimeEntry(quiz.entry))
     : parseInt(quiz.entry, 10);
-  if (given === q.answer) {
+  // dual clock: the first correct reading keeps the question open for the second
+  if (q.dual && quiz.dualLeft.size === 2 && quiz.dualLeft.has(given)) {
+    quiz.dualLeft.delete(given);
+    quiz.entry = "";
+    $("feedback").textContent = `✓ ${fmtTime(given)}`;
+    $("feedback").className = "feedback good";
+    if (usesPick(q)) { quiz.pickH = null; pickUpdate(); }
+    else $("answer-box").textContent = " ";
+    beep([880], 0.09);
+    return;
+  }
+  const frac = Math.max(0, 1 - (performance.now() - quiz.timerStart) / quiz.timerTotal);
+  stopTimer();
+  quiz.locked = true;
+  const good = q.dual ? quiz.dualLeft.has(given) : given === q.answer;
+  if (good) {
     // faster answers earn more: full question value instantly, half at the buzzer,
     // and a small share for overtime answers on easy difficulty
     const maxPts = 1000 / quiz.questions.length;
