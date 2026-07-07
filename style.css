@@ -74,7 +74,27 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 .big-btn.secondary { background: #f0edff; color: #7c5cff; box-shadow: none; margin-top: 12px; font-size: 1.2rem; padding: 14px; }
 
 .hint { text-align: center; color: #9a95c0; font-size: .9rem; min-height: 1.2em; margin: 12px 0 0; }
-.version { text-align: center; color: #c5c0e8; font-size: .8rem; font-weight: 600; margin: 6px 0 0; }
+.footer-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+.version { text-align: center; color: #c5c0e8; font-size: .8rem; font-weight: 600; margin: 0; }
+.parent-btn {
+  border: none; background: transparent; color: #d8d3f5; font-size: .95rem;
+  padding: 4px 8px; cursor: pointer; opacity: .55; transition: transform .1s, opacity .15s;
+  -webkit-user-select: none; user-select: none; touch-action: none;
+}
+.parent-btn.pressing { opacity: 1; transform: scale(1.25); }
+
+/* parent mistakes log */
+.mistakes-card { max-height: 82dvh; display: flex; flex-direction: column; }
+.mistake-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.mistake-list li {
+  background: #fff7f8; border: 2px solid #ffdbe1; border-radius: 16px;
+  padding: 10px 14px; margin-bottom: 10px;
+}
+.mistake-q { font-size: 1.2rem; font-weight: 800; color: #2d2a45; }
+.mistake-line { font-size: .95rem; font-weight: 700; margin-top: 2px; }
+.mistake-line.given { color: #e0284a; }
+.mistake-line.correct { color: #1da75c; }
+.mistake-ts { font-size: .78rem; color: #9a95c0; margin-top: 4px; }
 
 /* ============ quiz ============ */
 .quiz-wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; height: 100%; max-height: 860px; }

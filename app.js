@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.7.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -40,6 +40,9 @@ const STRINGS = {
     qFormat: "Question style",
     fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
     auto: "Answer entry", autoOn: "⚡ Instant", autoOff: "✓ With OK button",
+    mistakesTitle: "Mistakes Log 🔒", mistakesEmpty: "No mistakes recorded yet 🎉",
+    mistakesChild: "Child answered", mistakesCorrect: "Correct answer", mistakesNoAnswer: "No answer (time ran out)",
+    mistakesClear: "Clear log", mistakesClose: "Close",
     diff: "Difficulty", diffEasy: "😌 Easy · 30s", diffMed: "🙂 Medium · 20s", diffHard: "🔥 Hard · 10s",
     diffNote: "Easy: answering after time runs out still counts, for fewer points",
     overtime: "⏰ Keep going — fewer points now",
@@ -87,6 +90,9 @@ const STRINGS = {
     qFormat: "نمط الأسئلة",
     fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
     auto: "إدخال الإجابة", autoOn: "⚡ فوري", autoOff: "✓ بزر التأكيد",
+    mistakesTitle: "سجلّ الأخطاء 🔒", mistakesEmpty: "!لا توجد أخطاء مسجّلة بعد 🎉",
+    mistakesChild: "إجابة الطفل", mistakesCorrect: "الإجابة الصحيحة", mistakesNoAnswer: "لا توجد إجابة (انتهى الوقت)",
+    mistakesClear: "امسح السجلّ", mistakesClose: "إغلاق",
     diff: "مستوى الصعوبة", diffEasy: "😌 سهل · 30 ث", diffMed: "🙂 وسط · 20 ث", diffHard: "🔥 صعب · 10 ث",
     diffNote: "سهل: يمكن الإجابة بعد انتهاء الوقت لكن بنقاط أقل",
     overtime: "⏰ أكمل — النقاط أقل الآن",
@@ -134,6 +140,9 @@ const STRINGS = {
     qFormat: "Aufgabenstil",
     fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
     auto: "Antwort-Eingabe", autoOn: "⚡ Sofort", autoOff: "✓ Mit OK-Taste",
+    mistakesTitle: "Fehlerprotokoll 🔒", mistakesEmpty: "Noch keine Fehler aufgezeichnet 🎉",
+    mistakesChild: "Kind hat geantwortet", mistakesCorrect: "Richtige Antwort", mistakesNoAnswer: "Keine Antwort (Zeit abgelaufen)",
+    mistakesClear: "Protokoll löschen", mistakesClose: "Schließen",
     diff: "Schwierigkeit", diffEasy: "😌 Leicht · 30s", diffMed: "🙂 Mittel · 20s", diffHard: "🔥 Schwer · 10s",
     diffNote: "Leicht: Antworten nach Ablauf zählt noch, gibt aber weniger Punkte",
     overtime: "⏰ Weiter — jetzt weniger Punkte",
@@ -298,6 +307,24 @@ function loadBest() {
 }
 function saveBest(b) {
   try { localStorage.setItem("mathstars-best", JSON.stringify(b)); } catch {}
+}
+
+/* ================= parent mistake log =================
+   Every wrong/timed-out answer is recorded here, independent of the
+   per-fact weak-memory above. Viewed only via a long-press (see wiring). */
+function loadMistakes() {
+  try { return JSON.parse(localStorage.getItem("mathstars-mistakes")) || []; } catch { return []; }
+}
+function saveMistakes(list) {
+  try { localStorage.setItem("mathstars-mistakes", JSON.stringify(list.slice(-200))); } catch {}
+}
+function mistakePromptText(q) {
+  return q.op === "time" ? "🕐" : questionText(q);
+}
+function recordMistake(q, givenLabel) {
+  const list = loadMistakes();
+  list.push({ prompt: mistakePromptText(q), correct: answerText(q), given: givenLabel, ts: Date.now() });
+  saveMistakes(list);
 }
 
 /* ================= helpers ================= */
@@ -654,7 +681,11 @@ function applyLang() {
   $("t-review").textContent = t.review;
   $("btn-again").textContent = t.again;
   $("btn-settings").textContent = t.settings;
+  $("t-mistakesTitle").textContent = t.mistakesTitle;
+  $("btn-clear-mistakes").textContent = t.mistakesClear;
+  $("btn-mistakes-close").textContent = t.mistakesClose;
   document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t[el.dataset.t]; });
+  renderMistakes(); // keep the log's labels current if it's open during a language switch
 }
 
 /* ================= quiz flow ================= */
@@ -907,6 +938,7 @@ function submit() {
   } else {
     quiz.missed.push(q);
     recordResult(q, false);
+    recordMistake(q, q.op === "time" ? fmtTime(given) : String(given));
     $("answer-box").classList.add("wrong");
     $("feedback").textContent = `${T().answerIs}: ${answerText(q)}`;
     $("feedback").classList.add("bad");
@@ -920,6 +952,7 @@ function onTimeout() {
   quiz.locked = true;
   quiz.missed.push(q);
   recordResult(q, false);
+  recordMistake(q, null);
   $("answer-box").textContent = answerText(q);
   $("answer-box").classList.add("wrong");
   $("feedback").textContent = `${T().timeUp} ${T().answerIs}: ${answerText(q)}`;
@@ -1157,6 +1190,46 @@ document.addEventListener("keydown", e => {
 $("btn-quit").onclick = () => { stopTimer(); quiz = null; showScreen("setup"); };
 $("btn-again").onclick = startQuiz;
 $("btn-settings").onclick = () => showScreen("setup");
+
+/* ================= parent mistakes log: opens on long-press only ================= */
+function renderMistakes() {
+  const t = T();
+  const list = loadMistakes();
+  const ul = $("mistake-list");
+  ul.innerHTML = "";
+  $("mistakes-empty").hidden = list.length > 0;
+  $("mistakes-empty").textContent = t.mistakesEmpty;
+  for (const m of [...list].reverse()) {
+    const li = document.createElement("li");
+    const date = new Date(m.ts).toLocaleString(settings.lang === "ar" ? "ar" : settings.lang === "de" ? "de" : "en", {
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+    li.innerHTML = `
+      <div class="mistake-q" dir="ltr">${m.prompt}</div>
+      <div class="mistake-line given">${m.given == null ? t.mistakesNoAnswer : `${t.mistakesChild}: ${m.given}`}</div>
+      <div class="mistake-line correct">${t.mistakesCorrect}: ${m.correct}</div>
+      <div class="mistake-ts">${date}</div>`;
+    ul.appendChild(li);
+  }
+}
+
+(() => {
+  const btn = $("btn-parent");
+  const HOLD_MS = 600;
+  let timer = null;
+  const cancel = () => { clearTimeout(timer); timer = null; btn.classList.remove("pressing"); };
+  btn.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    btn.classList.add("pressing");
+    timer = setTimeout(() => { cancel(); renderMistakes(); showScreen("mistakes"); }, HOLD_MS);
+  });
+  btn.addEventListener("pointerup", cancel);
+  btn.addEventListener("pointerleave", cancel);
+  btn.addEventListener("pointercancel", cancel);
+  btn.addEventListener("contextmenu", e => e.preventDefault()); // no iOS callout on long-press
+})();
+$("btn-mistakes-close").onclick = () => showScreen("setup");
+$("btn-clear-mistakes").onclick = () => { saveMistakes([]); renderMistakes(); };
 
 buildSetup();
 applyLang();

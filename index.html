@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Math Stars</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=1.6.0">
+  <link rel="stylesheet" href="style.css?v=1.7.0">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -168,7 +168,23 @@
 
       <button id="btn-start" class="big-btn" type="button" disabled>Start! 🚀</button>
       <p id="setup-hint" class="hint"></p>
-      <p class="version" id="app-version" dir="ltr"></p>
+      <div class="footer-row" dir="ltr">
+        <p class="version" id="app-version"></p>
+        <button id="btn-parent" class="parent-btn" type="button" title="Hold to open parent log">🔒</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PARENT MISTAKES LOG (long-press to open) ============ -->
+  <section id="screen-mistakes" class="screen">
+    <div class="card mistakes-card">
+      <div class="setup-top">
+        <h1 id="t-mistakesTitle">Mistakes Log 🔒</h1>
+        <button id="btn-mistakes-close" class="quit-btn" type="button">✕</button>
+      </div>
+      <p class="hint" id="mistakes-empty" hidden></p>
+      <ul class="mistake-list" id="mistake-list" dir="ltr"></ul>
+      <button id="btn-clear-mistakes" class="big-btn secondary" type="button">Clear log</button>
     </div>
   </section>
 
@@ -276,6 +292,6 @@
     </div>
   </section>
 
-  <script src="app.js?v=1.6.0"></script>
+  <script src="app.js?v=1.7.0"></script>
 </body>
 </html>
