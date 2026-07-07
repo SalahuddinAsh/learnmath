@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.11.0";
+const APP_VERSION = "1.11.1";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -303,10 +303,10 @@ function weakToQuestion(key, cfg) {
   const mode = cfg.clockMode || "12";
   if (mode === "dual") {
     const base = a > 12 ? a - 12 : a;
-    if (base < 1 || base > 11) return null;
+    if (base < 0 || base > 11) return null;
     return { op: "time", a: base, b, dual: true, answer: base * 100 + b, answer2: (base + 12) * 100 + b };
   }
-  if (mode !== "24" && a > 12) return null;
+  if (mode !== "24" && (a < 1 || a > 12)) return null; // 12-hour clocks never show 0
   return { op: "time", a, b, clock24: mode === "24", answer: a * 100 + b };
 }
 
@@ -369,10 +369,10 @@ function makeOne(op, cfg) {
     const mode = cfg.clockMode || "12";
     const m = cfg.timeLevel === 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
     if (mode === "dual") {
-      const h = rand(1, 11); // skip 12 so the two answers are always distinct and < 24
+      const h = rand(0, 11); // skip 12 so the two answers are always distinct and < 24 (0 pairs with 12)
       return { op, a: h, b: m, dual: true, answer: h * 100 + m, answer2: (h + 12) * 100 + m };
     }
-    const h = mode === "24" ? rand(1, 23) : rand(1, 12);
+    const h = mode === "24" ? rand(0, 23) : rand(1, 12); // 24-hour mode includes midnight (0:MM)
     return { op, a: h, b: m, clock24: mode === "24", answer: h * 100 + m }; // 3:15 -> 315
   }
   if (op === "add") {
@@ -820,7 +820,10 @@ function nextQuestion() {
 
 /* ---- pick-style time input: a row of hours, a row of minutes ---- */
 function buildPickRows(q) {
-  const hours = Array.from({ length: q.clock24 || q.dual ? 23 : 12 }, (_, i) => i + 1);
+  // 24-hour and dual modes include midnight (0); plain 12-hour clocks never show 0
+  const hours = (q.clock24 || q.dual)
+    ? Array.from({ length: 24 }, (_, i) => i)
+    : Array.from({ length: 12 }, (_, i) => i + 1);
   const minutes = settings.timeLevel === 1 ? [0, 15, 30, 45] : Array.from({ length: 12 }, (_, i) => i * 5);
   fillPickRow("hour-row", hours, h => String(h), h => { quiz.pickH = h; pickUpdate(); });
   fillPickRow("minute-row", minutes, m => String(m).padStart(2, "0"), m => { quiz.pickM = m; pickUpdate(); });
@@ -889,6 +892,15 @@ function stopTimer() {
   if (quiz && quiz.timerId) { clearInterval(quiz.timerId); quiz.timerId = null; }
 }
 
+// how many digits a fully-typed answer should be. For time questions this must
+// come from the hour itself (String(q.a).length), not String(q.answer).length —
+// a midnight hour (0) contributes no digits to the numeric answer value, so
+// deriving expected length from the answer alone would under-count by one.
+function expectedEntryLength(q) {
+  if (q.op === "time") return String(q.a).length + 2; // hour digits + always-2-digit minutes
+  return String(q.answer).length;
+}
+
 function onKey(key) {
   if (!quiz || quiz.locked) return;
   const q = quiz.questions[quiz.index];
@@ -901,7 +913,7 @@ function onKey(key) {
     // (dual clock: either reading may come first, so match against both)
     const full = q.dual
       ? (quiz.dualLeft && quiz.dualLeft.has(parseTimeEntry(quiz.entry))) || quiz.entry.length >= 4
-      : quiz.entry.length >= String(q.answer).length;
+      : quiz.entry.length >= expectedEntryLength(q);
     if (settings.autoSubmit && full) {
       $("answer-box").textContent = entryDisplay(quiz.entry, q);
       submit();
