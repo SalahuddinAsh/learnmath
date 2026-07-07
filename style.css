@@ -77,13 +77,25 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 .footer-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
 .version { text-align: center; color: #c5c0e8; font-size: .8rem; font-weight: 600; margin: 0; }
 .parent-btn {
-  border: none; background: transparent; color: #d8d3f5; font-size: .95rem;
-  padding: 4px 8px; cursor: pointer; opacity: .55; transition: transform .1s, opacity .15s;
+  border: none; background: transparent; color: #d8d3f5; font-size: 1.7rem; line-height: 1;
+  padding: 6px 10px; cursor: pointer; opacity: .7; transition: transform .1s, opacity .15s;
   -webkit-user-select: none; user-select: none; touch-action: none;
 }
-.parent-btn.pressing { opacity: 1; transform: scale(1.25); }
+.parent-btn.pressing { opacity: 1; transform: scale(1.3); }
+.parent-hint {
+  color: #ffd54a; font-size: .8rem; font-weight: 700;
+  animation: pop .3s;
+}
+.parent-hint[hidden] { display: none; }
 
-/* parent mistakes log */
+/* parent mistakes log — a dismissible popup, not a full screen */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(20, 10, 50, .55); }
+.modal-card { position: relative; z-index: 1; width: 100%; animation: pop .25s; }
 .mistakes-card { max-height: 82dvh; display: flex; flex-direction: column; }
 .mistake-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
 .mistake-list li {
@@ -180,11 +192,12 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
   transition: transform .06s;
 }
 .pchip:active { transform: scale(.92); }
-/* hours and minutes get distinct colors so kids find the right row fast */
-#hour-row .pchip { background: #ede9ff; color: #4c3ba8; }
-#hour-row .pchip.selected { background: #7c5cff; color: #fff; }
-#minute-row .pchip { background: #ffeeda; color: #a05716; }
-#minute-row .pchip.selected { background: #f97316; color: #fff; }
+.pchip.wrongflash { animation: shake .4s; background: #ffe6ea !important; color: #e0284a !important; }
+/* hours and minutes get distinct colors so kids find the right row fast — shared by the quiz picker and the game picker */
+.hourcol .pchip { background: #ede9ff; color: #4c3ba8; }
+.hourcol .pchip.selected { background: #7c5cff; color: #fff; }
+.minutecol .pchip { background: #ffeeda; color: #a05716; }
+.minutecol .pchip.selected { background: #f97316; color: #fff; }
 #t-hours { color: #d8ceff; }
 #t-minutes { color: #ffe3c2; }
 .pick-ok { width: 100%; height: 58px; border-radius: 16px; font-size: 1.7rem; }
@@ -223,11 +236,19 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 @keyframes boom { 60% { transform: scale(1.6); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
 .sky.clock-sky { background: linear-gradient(180deg, #0f1b3d, #2a3a7a); }
 .meteor.clock-meteor {
-  background: #fff; width: 74px; height: 74px; padding: 4px;
-  box-shadow: 0 0 18px rgba(94, 200, 248, .85), 0 0 4px #fff;
+  background: #fff; width: clamp(112px, 27vw, 172px); height: clamp(112px, 27vw, 172px); padding: 7px;
+  box-shadow: 0 0 24px rgba(94, 200, 248, .9), 0 0 7px #fff;
 }
 .meteor.clock-meteor svg { width: 100%; height: 100%; display: block; }
 .meteor.clock-meteor.boom { background: none; box-shadow: none; }
+
+/* game picker: same hour/minute chip rows as the quiz, sized for quick taps mid-game */
+.game-pick { display: flex; flex-direction: column; gap: 7px; margin-top: auto; }
+.game-pick[hidden] { display: none; }
+.game-pick .pick-row { justify-content: center; gap: 5px; }
+/* hours split across two rows (1-12, 13-23) so each chip can stay readable */
+.game-pick .pchip { min-width: 42px; min-height: 40px; padding: 4px; font-size: 1.05rem; }
+.game-pick #game-minute-row .pchip { min-width: 50px; min-height: 46px; font-size: 1.1rem; }
 .game-entry { margin: 0 auto; max-width: 220px; min-height: 56px; font-size: 2rem; }
 .game-pad .key { height: clamp(46px, 7dvh, 64px); }
 .game-pad .key-zero { grid-column: span 2; }

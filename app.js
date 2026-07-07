@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.8.0";
+const APP_VERSION = "1.10.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -40,7 +40,8 @@ const STRINGS = {
     qFormat: "Question style",
     fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
     auto: "Answer entry", autoOn: "⚡ Instant", autoOff: "✓ With OK button",
-    mistakesTitle: "Mistakes Log 🔒", mistakesEmpty: "No mistakes recorded yet 🎉",
+    mistakesTitle: "Mistakes Log 📋", mistakesEmpty: "No mistakes recorded yet 🎉",
+    mistakesHoldHint: "Hold to open 👆",
     mistakesChild: "Child answered", mistakesCorrect: "Correct answer", mistakesNoAnswer: "No answer (time ran out)",
     mistakesClear: "Clear log", mistakesClose: "Close",
     diff: "Difficulty", diffEasy: "😌 Easy · 30s", diffMed: "🙂 Medium · 20s", diffHard: "🔥 Hard · 10s",
@@ -91,7 +92,8 @@ const STRINGS = {
     qFormat: "نمط الأسئلة",
     fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
     auto: "إدخال الإجابة", autoOn: "⚡ فوري", autoOff: "✓ بزر التأكيد",
-    mistakesTitle: "سجلّ الأخطاء 🔒", mistakesEmpty: "!لا توجد أخطاء مسجّلة بعد 🎉",
+    mistakesTitle: "سجلّ الأخطاء 📋", mistakesEmpty: "!لا توجد أخطاء مسجّلة بعد 🎉",
+    mistakesHoldHint: "اضغط مطولًا لفتحه 👆",
     mistakesChild: "إجابة الطفل", mistakesCorrect: "الإجابة الصحيحة", mistakesNoAnswer: "لا توجد إجابة (انتهى الوقت)",
     mistakesClear: "امسح السجلّ", mistakesClose: "إغلاق",
     diff: "مستوى الصعوبة", diffEasy: "😌 سهل · 30 ث", diffMed: "🙂 وسط · 20 ث", diffHard: "🔥 صعب · 10 ث",
@@ -142,7 +144,8 @@ const STRINGS = {
     qFormat: "Aufgabenstil",
     fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
     auto: "Antwort-Eingabe", autoOn: "⚡ Sofort", autoOff: "✓ Mit OK-Taste",
-    mistakesTitle: "Fehlerprotokoll 🔒", mistakesEmpty: "Noch keine Fehler aufgezeichnet 🎉",
+    mistakesTitle: "Fehlerprotokoll 📋", mistakesEmpty: "Noch keine Fehler aufgezeichnet 🎉",
+    mistakesHoldHint: "Gedrückt halten 👆",
     mistakesChild: "Kind hat geantwortet", mistakesCorrect: "Richtige Antwort", mistakesNoAnswer: "Keine Antwort (Zeit abgelaufen)",
     mistakesClear: "Protokoll löschen", mistakesClose: "Schließen",
     diff: "Schwierigkeit", diffEasy: "😌 Leicht · 30s", diffMed: "🙂 Mittel · 20s", diffHard: "🔥 Schwer · 10s",
@@ -687,6 +690,7 @@ function applyLang() {
   $("t-mistakesTitle").textContent = t.mistakesTitle;
   $("btn-clear-mistakes").textContent = t.mistakesClear;
   $("btn-mistakes-close").textContent = t.mistakesClose;
+  $("parent-hint").textContent = t.mistakesHoldHint;
   document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t[el.dataset.t]; });
   renderMistakes(); // keep the log's labels current if it's open during a language switch
 }
@@ -1042,28 +1046,40 @@ function gameCfg() {
   return cfg;
 }
 
-// clock times the kid has previously misread, so Clock Blaster can bring them back
-function loadWeakClockTimes() {
+// the same minute set the quiz's clock questions use for this difficulty level —
+// Clock Blaster matches it exactly and never changes it mid-game
+function clockMinuteSet() {
+  return settings.timeLevel === 1 ? [0, 15, 30, 45] : Array.from({ length: 12 }, (_, i) => i * 5);
+}
+
+// clock times the kid has previously misread, so Clock Blaster can bring them
+// back — filtered to the minute set actually in play this game, so a mismatched
+// leftover (e.g. saved from a quiz run at the other clock difficulty) never appears
+function loadWeakClockTimes(minutes) {
   const w = loadWeak();
   const out = [];
   for (const key of Object.keys(w)) {
     const m = key.match(/^time:(\d+):(\d+)$/);
-    if (m) for (let i = 0; i < w[key]; i++) out.push({ h: +m[1], m: +m[2] });
+    if (m && minutes.includes(+m[2])) for (let i = 0; i < w[key]; i++) out.push({ h: +m[1], m: +m[2] });
   }
   return out;
 }
 
-// Clock Blaster's own difficulty ladder: quarter-past/half only at first, then
-// quarters, then any 5-minute step — independent of the quiz's clock settings
-// so the in-game challenge always ramps up regardless of how the quiz was configured.
-function randomClockTime(level, weakTimes) {
+// Hours run the full 0-23 (24-hour) range, including midnight (0); the clock
+// face itself still only ever shows 1-12 (that's all an analog face can show,
+// with 0 rendering at the same "12" position as 12 itself), so the dark/light
+// face is the only cue for which half of the day it is — same convention as
+// the quiz's 24-hour clock (isNightHour: dark from 12:00 onward). The minute
+// set is fixed for the whole game, matching whatever the quiz's clock difficulty
+// was set to — it never changes mid-game.
+function randomClockTime(minutes, weakTimes) {
   if (weakTimes && weakTimes.length && Math.random() < WEAK_BIAS) {
     const t = pick(weakTimes);
-    return { h: t.h, m: t.m, answer: t.h * 100 + t.m };
+    return { h: t.h, m: t.m, answer: t.h * 100 + t.m, night: t.h >= 12 };
   }
-  const h = rand(1, 12);
-  const m = level <= 0 ? pick([0, 30]) : level === 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
-  return { h, m, answer: h * 100 + m };
+  const h = rand(0, 23);
+  const m = pick(minutes);
+  return { h, m, answer: h * 100 + m, night: h >= 12 };
 }
 
 function startGame() {
@@ -1072,18 +1088,34 @@ function startGame() {
   document.querySelectorAll("#sky .meteor").forEach(m => m.remove());
   $("game-over").hidden = true;
   const kind = gameKindForCurrentSettings();
+  // Clock Blaster shows exactly one clock at a time: it falls, gets answered
+  // (or lands), then there's a clear empty-sky pause before the next one
+  // appears — this is what actually gives the kid time to read and answer,
+  // not just fall speed or spacing between simultaneous clocks.
+  const clockLanes = 1;
+  const clockMinutes = clockMinuteSet(); // fixed for the whole game — matches the quiz's clock difficulty
   game = {
     kind,
     cfg: kind === "num" ? gameCfg() : null, recent: [],
-    clockLevel: 0, clockZaps: 0, weakTimes: kind === "clock" ? loadWeakClockTimes() : [],
+    clockMinutes, weakTimes: kind === "clock" ? loadWeakClockTimes(clockMinutes) : [],
+    pickH: null, pickM: null,
+    lanes: kind === "clock" ? new Array(clockLanes).fill(null) : null,
     score: 0, lives: 3, meteors: [], entry: "",
-    speed: 26, spawnEvery: 3000, sinceSpawn: 2500,
-    maxItems: kind === "clock" ? 3 : 4,
+    // Clock Blaster starts noticeably slower than Meteor Blaster — reading a
+    // clock face takes longer than reading digits. spawnEvery here is the
+    // empty-sky pause between one clock resolving and the next appearing.
+    speed: kind === "clock" ? 10 : 26,
+    spawnEvery: kind === "clock" ? 2600 : 3000,
+    sinceSpawn: kind === "clock" ? 1000 : 2500,
+    maxItems: kind === "clock" ? clockLanes : 4,
     over: false, prev: performance.now(), raf: null,
   };
   updateGameHud();
   $("game-entry").textContent = " ";
   $("sky").classList.toggle("clock-sky", kind === "clock");
+  $("game-numpad").hidden = kind === "clock";
+  $("game-pick").hidden = kind !== "clock";
+  if (kind === "clock") renderGamePickRows();
   showScreen("game");
   game.raf = requestAnimationFrame(gameTick);
 }
@@ -1099,7 +1131,6 @@ function gameTick(now) {
   game.prev = now;
   const sky = $("sky");
   const H = sky.clientHeight;
-  const landY = game.kind === "clock" ? H - 78 : H - 52;
   game.sinceSpawn += dt * 1000;
   if (game.sinceSpawn >= game.spawnEvery && game.meteors.length < game.maxItems) {
     spawnMeteor();
@@ -1108,6 +1139,9 @@ function gameTick(now) {
   for (const m of [...game.meteors]) {
     m.y += game.speed * dt;
     m.el.style.top = m.y + "px";
+    // clock faces are bigger and their size is responsive, so measure the
+    // actual element instead of assuming a fixed footprint like the meteors
+    const landY = H - (m.el.offsetHeight || (game.kind === "clock" ? 110 : 52));
     if (m.y > landY) meteorLanded(m);
   }
   game.raf = requestAnimationFrame(gameTick);
@@ -1127,19 +1161,31 @@ function spawnMeteor() {
 }
 
 function spawnClockMeteor() {
+  const lane = game.lanes.indexOf(null);
+  if (lane === -1) return; // every lane occupied — wait for one to clear
   let t;
   for (let attempt = 0; attempt < 8; attempt++) {
-    t = randomClockTime(game.clockLevel, game.weakTimes);
+    t = randomClockTime(game.clockMinutes, game.weakTimes);
     if (!game.meteors.some(x => x.answer === t.answer)) break;
   }
   const el = document.createElement("div");
   el.className = "meteor clock-meteor";
   el.dir = "ltr";
-  el.innerHTML = clockSVG(t.h, t.m, false);
-  el.style.left = (5 + Math.random() * 60) + "%";
-  el.style.top = "-70px";
-  $("sky").appendChild(el);
-  game.meteors.push({ answer: t.answer, el, y: -70 });
+  el.innerHTML = clockSVG(t.h, t.m, t.night);
+  el.style.top = "-160px";
+  const sky = $("sky");
+  sky.appendChild(el);
+  // fixed side-by-side lanes computed from the clock's actual rendered size —
+  // this is what actually prevents overlap, not the fall speed or spawn timing
+  const skyW = sky.clientWidth || 300;
+  const size = el.offsetWidth || 110;
+  const laneW = skyW / game.lanes.length;
+  let x = lane * laneW + (laneW - size) / 2;
+  x = Math.max(4, Math.min(skyW - size - 4, x));
+  el.style.left = x + "px";
+  const meteor = { answer: t.answer, el, y: -160, lane };
+  game.lanes[lane] = meteor;
+  game.meteors.push(meteor);
 }
 
 function removeMeteor(m) {
@@ -1153,6 +1199,7 @@ function meteorLanded(m) {
   const el = m.el;
   game.meteors = game.meteors.filter(x => x !== m);
   setTimeout(() => el.remove(), 400);
+  if (game.kind === "clock" && m.lane != null) game.lanes[m.lane] = null;
   game.lives--;
   updateGameHud();
   soundBad();
@@ -1160,10 +1207,15 @@ function meteorLanded(m) {
   // fresh sky after losing a life: clear everything, keep the pace,
   // and leave a short breather before meteors fall again
   for (const other of game.meteors) other.el.remove();
+  if (game.kind === "clock") game.lanes.fill(null);
   game.meteors = [];
   game.entry = "";
   $("game-entry").textContent = " ";
   game.sinceSpawn = -1500;
+  if (game.kind === "clock") {
+    game.pickH = null; game.pickM = null;
+    document.querySelectorAll(".game-hour-pick .pchip, #game-minute-row .pchip").forEach(b => b.classList.remove("selected", "wrongflash"));
+  }
 }
 
 function blast(m) {
@@ -1172,15 +1224,20 @@ function blast(m) {
   const el = m.el;
   game.meteors = game.meteors.filter(x => x !== m);
   setTimeout(() => el.remove(), 400);
+  if (game.kind === "clock" && m.lane != null) game.lanes[m.lane] = null;
   game.score += 10;
   // every blast makes the sky a little angrier
   game.speed += 1.5;
-  game.spawnEvery = Math.max(1300, game.spawnEvery - 55);
   if (game.kind === "clock") {
-    // Clock Blaster's own ladder: a few easy zaps, then quarters, then any 5 minutes
-    game.clockZaps++;
-    if (game.clockZaps === 3) game.clockLevel = 1;
-    else if (game.clockZaps === 7) game.clockLevel = 2;
+    // the empty-sky pause always starts counting from THIS moment (when the
+    // clock is resolved), not from whenever it originally fell — that's what
+    // guarantees a real gap before the next one, however fast the answer was.
+    // Minute difficulty stays fixed all game (matches the quiz's clock setting);
+    // only the pause length and fall speed ramp up with each hit.
+    game.sinceSpawn = 0;
+    game.spawnEvery = Math.max(1800, game.spawnEvery - 55);
+  } else {
+    game.spawnEvery = Math.max(1300, game.spawnEvery - 55);
   }
   updateGameHud();
   beep([880, 1320], 0.08);
@@ -1203,6 +1260,8 @@ function gameKey(key) {
   $("game-entry").textContent = game.entry || " ";
 }
 
+// digit-typing fallback for a physical keyboard; the on-screen UI for clock
+// kind shows the hour/minute picker below instead (see renderGamePickRows)
 function gameKeyClock(key) {
   if (key === "back") game.entry = game.entry.slice(0, -1);
   else if (game.entry.length < 4) game.entry += key;
@@ -1215,6 +1274,60 @@ function gameKeyClock(key) {
     game.entry = ""; // exhausted digits without a match: start over
   }
   $("game-entry").textContent = game.entry ? entryDisplay(game.entry, { op: "time" }) : " ";
+}
+
+/* ---- Clock Blaster's hour/minute picker: tap, no typing ---- */
+function fillGamePickRow(rowId, values, label, onTap) {
+  const row = $(rowId);
+  row.innerHTML = "";
+  for (const v of values) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pchip"; b.textContent = label(v);
+    b.onclick = () => { if (game && !game.over) onTap(v); };
+    b.dataset.val = v;
+    row.appendChild(b);
+  }
+}
+
+function renderGamePickRows() {
+  // full 24-hour range (0-23, including midnight) split evenly across two rows:
+  // 0-11, then 12-23 — the clock face's dark/light color is the only cue for
+  // which row the answer is in (light for 0-11, dark for 12-23)
+  const hours1 = Array.from({ length: 12 }, (_, i) => i);
+  const hours2 = Array.from({ length: 12 }, (_, i) => i + 12);
+  // fixed for the whole game — matches the quiz's clock difficulty setting
+  fillGamePickRow("game-hour-row", hours1, h => String(h), h => { game.pickH = h; gamePickTry(); });
+  fillGamePickRow("game-hour-row2", hours2, h => String(h), h => { game.pickH = h; gamePickTry(); });
+  fillGamePickRow("game-minute-row", game.clockMinutes, m => String(m).padStart(2, "0"), m => { game.pickM = m; gamePickTry(); });
+  $("game-entry").textContent = " ";
+}
+
+function gamePickTry() {
+  const h = game.pickH, m = game.pickM;
+  document.querySelectorAll(".game-hour-pick .pchip").forEach(b => b.classList.toggle("selected", +b.dataset.val === h));
+  document.querySelectorAll("#game-minute-row .pchip").forEach(b => b.classList.toggle("selected", +b.dataset.val === m));
+  $("game-entry").textContent = `${h == null ? "–" : h}:${m == null ? "––" : String(m).padStart(2, "0")}`;
+  if (h == null || m == null) return;
+  const val = h * 100 + m;
+  const hit = game.meteors.filter(x => x.answer === val).sort((a, b) => b.y - a.y)[0];
+  if (hit) {
+    blast(hit);
+    game.pickH = null; game.pickM = null;
+    document.querySelectorAll(".game-hour-pick .pchip, #game-minute-row .pchip").forEach(b => b.classList.remove("selected"));
+    $("game-entry").textContent = " ";
+  } else {
+    // no falling clock shows that exact time yet: flash red, then let them try again
+    document.querySelectorAll(".game-hour-pick .pchip.selected, #game-minute-row .pchip.selected").forEach(b => {
+      b.classList.remove("wrongflash"); void b.offsetWidth; b.classList.add("wrongflash");
+    });
+    soundBad();
+    setTimeout(() => {
+      if (!game || game.over) return;
+      game.pickH = null; game.pickM = null;
+      document.querySelectorAll(".game-hour-pick .pchip, #game-minute-row .pchip").forEach(b => b.classList.remove("selected", "wrongflash"));
+      $("game-entry").textContent = " ";
+    }, 380);
+  }
 }
 
 function endGame() {
@@ -1258,6 +1371,7 @@ $("pick-ok").onclick = () => {
   if (quiz && !quiz.locked && quiz.pickH != null && quiz.pickM != null) submit();
 };
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("mistakes-modal").hidden) { closeMistakesModal(); return; }
   if ($("screen-game").classList.contains("active")) {
     if (/^[0-9]$/.test(e.key)) gameKey(e.key);
     else if (e.key === "Backspace") gameKey("back");
@@ -1294,22 +1408,43 @@ function renderMistakes() {
   }
 }
 
+// popup, not a screen: opens over whatever's behind it, closes with a single tap
+function openMistakesModal() {
+  renderMistakes();
+  $("mistakes-modal").hidden = false;
+}
+function closeMistakesModal() {
+  $("mistakes-modal").hidden = true;
+}
 (() => {
   const btn = $("btn-parent");
+  const hint = $("parent-hint");
   const HOLD_MS = 600;
   let timer = null;
+  let hintTimer = null;
   const cancel = () => { clearTimeout(timer); timer = null; btn.classList.remove("pressing"); };
+  const showHint = () => {
+    hint.hidden = false;
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => { hint.hidden = true; }, 1400);
+  };
   btn.addEventListener("pointerdown", e => {
     e.preventDefault();
     btn.classList.add("pressing");
-    timer = setTimeout(() => { cancel(); renderMistakes(); showScreen("mistakes"); }, HOLD_MS);
+    hint.hidden = true;
+    timer = setTimeout(() => { cancel(); openMistakesModal(); }, HOLD_MS);
   });
-  btn.addEventListener("pointerup", cancel);
+  btn.addEventListener("pointerup", () => {
+    const wasPending = timer !== null; // released before the hold finished
+    cancel();
+    if (wasPending) showHint(); // a quick tap gets a hint instead of silence
+  });
   btn.addEventListener("pointerleave", cancel);
   btn.addEventListener("pointercancel", cancel);
   btn.addEventListener("contextmenu", e => e.preventDefault()); // no iOS callout on long-press
 })();
-$("btn-mistakes-close").onclick = () => showScreen("setup");
+$("btn-mistakes-close").onclick = closeMistakesModal;
+$("mistakes-backdrop").onclick = closeMistakesModal; // tap outside the card to dismiss
 $("btn-clear-mistakes").onclick = () => { saveMistakes([]); renderMistakes(); };
 
 buildSetup();

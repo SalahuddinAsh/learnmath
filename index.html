@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Math Stars</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=1.8.0">
+  <link rel="stylesheet" href="style.css?v=1.10.0">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -170,23 +170,25 @@
       <p id="setup-hint" class="hint"></p>
       <div class="footer-row" dir="ltr">
         <p class="version" id="app-version"></p>
-        <button id="btn-parent" class="parent-btn" type="button" title="Hold to open parent log">🔒</button>
+        <button id="btn-parent" class="parent-btn" type="button" title="Hold to open the mistakes log">📋</button>
+        <span class="parent-hint" id="parent-hint" hidden>Hold to open</span>
       </div>
     </div>
   </section>
 
-  <!-- ============ PARENT MISTAKES LOG (long-press to open) ============ -->
-  <section id="screen-mistakes" class="screen">
-    <div class="card mistakes-card">
+  <!-- ============ PARENT MISTAKES LOG (long-press 📋 to open; popup, not a screen) ============ -->
+  <div class="modal-overlay" id="mistakes-modal" hidden>
+    <div class="modal-backdrop" id="mistakes-backdrop"></div>
+    <div class="card mistakes-card modal-card">
       <div class="setup-top">
-        <h1 id="t-mistakesTitle">Mistakes Log 🔒</h1>
+        <h1 id="t-mistakesTitle">Mistakes Log 📋</h1>
         <button id="btn-mistakes-close" class="quit-btn" type="button">✕</button>
       </div>
       <p class="hint" id="mistakes-empty" hidden></p>
       <ul class="mistake-list" id="mistake-list" dir="ltr"></ul>
       <button id="btn-clear-mistakes" class="big-btn secondary" type="button">Clear log</button>
     </div>
-  </section>
+  </div>
 
   <!-- ============ QUIZ SCREEN ============ -->
   <section id="screen-quiz" class="screen">
@@ -227,9 +229,9 @@
 
       <div class="time-pick" id="time-pick" hidden dir="ltr">
         <div class="pick-label" id="t-hours">Hours</div>
-        <div class="pick-row" id="hour-row"></div>
+        <div class="pick-row hourcol" id="hour-row"></div>
         <div class="pick-label" id="t-minutes">Minutes</div>
-        <div class="pick-row" id="minute-row"></div>
+        <div class="pick-row minutecol" id="minute-row"></div>
         <button class="key key-ok pick-ok" id="pick-ok" type="button" disabled>✓</button>
       </div>
     </div>
@@ -289,9 +291,15 @@
         <button class="key key-back" data-key="back" type="button">⌫</button>
         <button class="key key-zero" data-key="0" type="button">0</button>
       </div>
+
+      <div class="game-pick" id="game-pick" dir="ltr" hidden>
+        <div class="pick-row hourcol game-hour-pick" id="game-hour-row"></div>
+        <div class="pick-row hourcol game-hour-pick" id="game-hour-row2"></div>
+        <div class="pick-row minutecol" id="game-minute-row"></div>
+      </div>
     </div>
   </section>
 
-  <script src="app.js?v=1.8.0"></script>
+  <script src="app.js?v=1.10.0"></script>
 </body>
 </html>
