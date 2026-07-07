@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.10.0";
+const APP_VERSION = "1.11.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -51,6 +51,7 @@ const STRINGS = {
     gameNote: "Score at least this much in a test to unlock one round of Meteor Blaster ☄️ (or Clock Blaster ⏰ if Time is selected)",
     gamePlay: "🎮 Play Meteor Blaster!",
     gamePlayClock: "⏰ Play Clock Blaster!",
+    gamePlayMixed: "🎮⏰ Play the Mix!",
     gameOver: "Game over! ☄️",
     hours: "Hours", minutes: "Minutes",
     morning: "in the morning ☀️", afternoon: "in the afternoon 🌇", evening: "in the evening 🌙",
@@ -103,6 +104,7 @@ const STRINGS = {
     gameNote: "احصل على هذه النقاط في الاختبار لتفتح جولة من صائد النيازك ☄️ (أو صائد الساعات ⏰ إذا اخترت الوقت)",
     gamePlay: "!العب صائد النيازك 🎮",
     gamePlayClock: "!العب صائد الساعات ⏰",
+    gamePlayMixed: "!العب الخليط 🎮⏰",
     gameOver: "انتهت اللعبة! ☄️",
     hours: "الساعات", minutes: "الدقائق",
     morning: "صباحًا ☀️", afternoon: "بعد الظهر 🌇", evening: "مساءً 🌙",
@@ -155,6 +157,7 @@ const STRINGS = {
     gameNote: "Erreiche diese Punktzahl im Test, um eine Runde Meteor-Blaster freizuschalten ☄️ (oder Uhren-Blaster ⏰, wenn Uhrzeit ausgewählt ist)",
     gamePlay: "🎮 Meteor-Blaster spielen!",
     gamePlayClock: "⏰ Uhren-Blaster spielen!",
+    gamePlayMixed: "🎮⏰ Mix spielen!",
     gameOver: "Game over! ☄️",
     hours: "Stunden", minutes: "Minuten",
     morning: "morgens ☀️", afternoon: "nachmittags 🌇", evening: "abends 🌙",
@@ -677,7 +680,7 @@ function applyLang() {
   $("diff-note").textContent = t.diffNote;
   $("t-game").textContent = t.game;
   $("game-note").textContent = t.gameNote;
-  $("btn-play-game").textContent = t.gamePlay;
+  $("btn-play-game").textContent = t.gamePlay; // finishQuiz() picks the exact label per kind
   $("go-title").textContent = t.gameOver;
   $("t-hours").textContent = t.hours;
   $("t-minutes").textContent = t.minutes;
@@ -985,9 +988,12 @@ function finishQuiz() {
   $("sub-score").textContent = `✓ ${quiz.correct} / ${total}`;
   $("cheer").textContent = T()["cheer" + stars];
 
-  // qualifying score earns one round of the reward game — Clock Blaster when
-  // Time was among the practiced operations, Meteor Blaster otherwise
-  $("btn-play-game").textContent = gameKindForCurrentSettings() === "clock" ? T().gamePlayClock : T().gamePlay;
+  // qualifying score earns one round of the reward game. A quiz that mixed
+  // Time with other operations earns the mixed game (falling clocks AND
+  // equations together); a quiz of just one kind earns that game alone.
+  const gk = gameKindForCurrentSettings();
+  const label = gk === "mixed" ? T().gamePlayMixed : gk === "clock" ? T().gamePlayClock : T().gamePlay;
+  $("btn-play-game").textContent = label;
   $("btn-play-game").hidden = !(settings.gameScore > 0 && score >= settings.gameScore);
 
   const best = loadBest();
@@ -1025,10 +1031,16 @@ function finishQuiz() {
 /* ================= Meteor Blaster (reward game) ================= */
 let game = null;
 
-// Clock Blaster launches instead of Meteor Blaster whenever the just-practiced
-// quiz included Time among its operations (kindergarten/tables never include it).
+// Which reward game a just-finished quiz earns. Kindergarten/tables modes never
+// include Time, so they're always "num". A quiz that mixed Time with other
+// operations earns "mixed" — a single game where falling clocks and falling
+// equations both appear, matching what was actually practiced.
 function gameKindForCurrentSettings() {
-  return (settings.mode === "test" && settings.ops.includes("time")) ? "clock" : "num";
+  if (settings.mode !== "test") return "num";
+  const hasTime = settings.ops.includes("time");
+  const hasOther = settings.ops.some(o => o !== "time");
+  if (hasTime && hasOther) return "mixed";
+  return hasTime ? "clock" : "num";
 }
 
 function gameCfg() {
@@ -1087,42 +1099,55 @@ function startGame() {
   $("btn-play-game").hidden = true; // the ticket is spent
   document.querySelectorAll("#sky .meteor").forEach(m => m.remove());
   $("game-over").hidden = true;
-  const kind = gameKindForCurrentSettings();
-  // Clock Blaster shows exactly one clock at a time: it falls, gets answered
-  // (or lands), then there's a clear empty-sky pause before the next one
-  // appears — this is what actually gives the kid time to read and answer,
-  // not just fall speed or spacing between simultaneous clocks.
-  const clockLanes = 1;
+  const kind = gameKindForCurrentSettings(); // "num" | "clock" | "mixed"
+  // "clock" and "mixed" both show exactly one object at a time: it falls, gets
+  // answered (or lands), then there's a clear empty-sky pause before the next
+  // one appears. "mixed" additionally alternates between a falling equation
+  // and a falling clock, switching the input UI (numpad vs picker) to match
+  // whichever is currently live.
+  const singleObject = kind !== "num";
   const clockMinutes = clockMinuteSet(); // fixed for the whole game — matches the quiz's clock difficulty
   game = {
     kind,
-    cfg: kind === "num" ? gameCfg() : null, recent: [],
-    clockMinutes, weakTimes: kind === "clock" ? loadWeakClockTimes(clockMinutes) : [],
-    pickH: null, pickM: null,
-    lanes: kind === "clock" ? new Array(clockLanes).fill(null) : null,
+    cfg: kind !== "clock" ? gameCfg() : null, recent: [],
+    clockMinutes, weakTimes: kind !== "num" ? loadWeakClockTimes(clockMinutes) : [],
+    pickH: null, pickM: null, currentIsClock: false,
+    lanes: singleObject ? [null] : null,
     score: 0, lives: 3, meteors: [], entry: "",
-    // Clock Blaster starts noticeably slower than Meteor Blaster — reading a
-    // clock face takes longer than reading digits. spawnEvery here is the
-    // empty-sky pause between one clock resolving and the next appearing.
-    speed: kind === "clock" ? 10 : 26,
-    spawnEvery: kind === "clock" ? 2600 : 3000,
-    sinceSpawn: kind === "clock" ? 1000 : 2500,
-    maxItems: kind === "clock" ? clockLanes : 4,
+    // the single-object games start noticeably slower than Meteor Blaster —
+    // reading a clock face (or watching for either kind) takes longer than
+    // just reading digits. spawnEvery is the empty-sky pause between one
+    // object resolving and the next appearing.
+    speed: singleObject ? 10 : 26,
+    spawnEvery: singleObject ? 2600 : 3000,
+    sinceSpawn: singleObject ? 1000 : 2500,
+    maxItems: singleObject ? 1 : 4,
     over: false, prev: performance.now(), raf: null,
   };
   updateGameHud();
-  $("game-entry").textContent = " ";
-  $("sky").classList.toggle("clock-sky", kind === "clock");
-  $("game-numpad").hidden = kind === "clock";
-  $("game-pick").hidden = kind !== "clock";
   if (kind === "clock") renderGamePickRows();
+  else if (kind === "mixed") renderGamePickRows(); // built once, reused whenever a clock spawns
+  switchInputUI(kind === "clock");
   showScreen("game");
   game.raf = requestAnimationFrame(gameTick);
 }
 
+// toggles the numpad vs the hour/minute picker — called once at game start for
+// "num"/"clock", and again on every spawn in "mixed" mode since the type varies
+function switchInputUI(isClock) {
+  game.currentIsClock = isClock;
+  $("sky").classList.toggle("clock-sky", isClock);
+  $("game-numpad").hidden = isClock;
+  $("game-pick").hidden = !isClock;
+  game.entry = "";
+  game.pickH = null; game.pickM = null;
+  document.querySelectorAll(".game-hour-pick .pchip, #game-minute-row .pchip").forEach(b => b.classList.remove("selected", "wrongflash"));
+  $("game-entry").textContent = " ";
+}
+
 function updateGameHud() {
   $("game-lives").textContent = "❤️".repeat(game.lives) || "💔";
-  $("game-score").textContent = `${game.kind === "clock" ? "⏰" : "☄️"} ${game.score}`;
+  $("game-score").textContent = `${game.currentIsClock ? "⏰" : "☄️"} ${game.score}`;
 }
 
 function gameTick(now) {
@@ -1141,7 +1166,7 @@ function gameTick(now) {
     m.el.style.top = m.y + "px";
     // clock faces are bigger and their size is responsive, so measure the
     // actual element instead of assuming a fixed footprint like the meteors
-    const landY = H - (m.el.offsetHeight || (game.kind === "clock" ? 110 : 52));
+    const landY = H - (m.el.offsetHeight || (m.isClock ? 110 : 52));
     if (m.y > landY) meteorLanded(m);
   }
   game.raf = requestAnimationFrame(gameTick);
@@ -1149,6 +1174,12 @@ function gameTick(now) {
 
 function spawnMeteor() {
   if (game.kind === "clock") { spawnClockMeteor(); return; }
+  if (game.kind === "num") { spawnNumMeteor(); return; }
+  // mixed: a coin flip decides what falls next, then the input UI switches to match
+  if (Math.random() < 0.5) spawnClockMeteor(); else spawnNumMeteor();
+}
+
+function spawnNumMeteor() {
   const q = generateQuestion(game.cfg, game.recent);
   const el = document.createElement("div");
   el.className = "meteor";
@@ -1157,7 +1188,8 @@ function spawnMeteor() {
   el.style.left = (5 + Math.random() * 62) + "%";
   el.style.top = "-50px";
   $("sky").appendChild(el);
-  game.meteors.push({ q, el, y: -50 });
+  game.meteors.push({ q, el, y: -50, isClock: false });
+  if (game.kind === "mixed") switchInputUI(false);
 }
 
 function spawnClockMeteor() {
@@ -1183,9 +1215,10 @@ function spawnClockMeteor() {
   let x = lane * laneW + (laneW - size) / 2;
   x = Math.max(4, Math.min(skyW - size - 4, x));
   el.style.left = x + "px";
-  const meteor = { answer: t.answer, el, y: -160, lane };
+  const meteor = { answer: t.answer, el, y: -160, lane, isClock: true };
   game.lanes[lane] = meteor;
   game.meteors.push(meteor);
+  if (game.kind === "mixed") switchInputUI(true);
 }
 
 function removeMeteor(m) {
@@ -1199,20 +1232,20 @@ function meteorLanded(m) {
   const el = m.el;
   game.meteors = game.meteors.filter(x => x !== m);
   setTimeout(() => el.remove(), 400);
-  if (game.kind === "clock" && m.lane != null) game.lanes[m.lane] = null;
+  if (m.isClock && m.lane != null) game.lanes[m.lane] = null;
   game.lives--;
   updateGameHud();
   soundBad();
   if (game.lives <= 0) { endGame(); return; }
   // fresh sky after losing a life: clear everything, keep the pace,
-  // and leave a short breather before meteors fall again
+  // and leave a short breather before objects fall again
   for (const other of game.meteors) other.el.remove();
-  if (game.kind === "clock") game.lanes.fill(null);
+  if (game.lanes) game.lanes.fill(null);
   game.meteors = [];
   game.entry = "";
   $("game-entry").textContent = " ";
   game.sinceSpawn = -1500;
-  if (game.kind === "clock") {
+  if (m.isClock) {
     game.pickH = null; game.pickM = null;
     document.querySelectorAll(".game-hour-pick .pchip, #game-minute-row .pchip").forEach(b => b.classList.remove("selected", "wrongflash"));
   }
@@ -1224,20 +1257,20 @@ function blast(m) {
   const el = m.el;
   game.meteors = game.meteors.filter(x => x !== m);
   setTimeout(() => el.remove(), 400);
-  if (game.kind === "clock" && m.lane != null) game.lanes[m.lane] = null;
+  if (m.isClock && m.lane != null) game.lanes[m.lane] = null;
   game.score += 10;
   // every blast makes the sky a little angrier
   game.speed += 1.5;
-  if (game.kind === "clock") {
-    // the empty-sky pause always starts counting from THIS moment (when the
-    // clock is resolved), not from whenever it originally fell — that's what
-    // guarantees a real gap before the next one, however fast the answer was.
-    // Minute difficulty stays fixed all game (matches the quiz's clock setting);
-    // only the pause length and fall speed ramp up with each hit.
+  if (game.kind === "num") {
+    game.spawnEvery = Math.max(1300, game.spawnEvery - 55);
+  } else {
+    // clock or mixed: single-object pacing — the pause always starts counting
+    // from THIS moment (when the object is resolved), not from whenever it
+    // originally fell — that's what guarantees a real gap before the next one,
+    // however fast the answer was. Clock minute difficulty stays fixed all
+    // game (matches the quiz's clock setting); only pace ramps up with hits.
     game.sinceSpawn = 0;
     game.spawnEvery = Math.max(1800, game.spawnEvery - 55);
-  } else {
-    game.spawnEvery = Math.max(1300, game.spawnEvery - 55);
   }
   updateGameHud();
   beep([880, 1320], 0.08);
@@ -1245,17 +1278,20 @@ function blast(m) {
 
 function gameKey(key) {
   if (!game || game.over) return;
-  if (game.kind === "clock") { gameKeyClock(key); return; }
+  if (game.currentIsClock) { gameKeyClock(key); return; }
   if (key === "back") game.entry = game.entry.slice(0, -1);
   else if (game.entry.length < 4) game.entry += key;
   const val = parseInt(game.entry, 10);
   // the lowest matching meteor is the most urgent one
-  const hit = game.meteors.filter(m => m.q.answer === val).sort((a, b) => b.y - a.y)[0];
+  const hit = game.meteors.filter(m => !m.isClock && m.q.answer === val).sort((a, b) => b.y - a.y)[0];
   if (hit) {
     blast(hit);
     game.entry = "";
-  } else if (game.entry.length >= Math.max(1, ...game.meteors.map(m => String(m.q.answer).length))) {
-    game.entry = ""; // full-length miss: clear for the next try
+  } else {
+    const numAnswers = game.meteors.filter(m => !m.isClock).map(m => String(m.q.answer).length);
+    if (numAnswers.length && game.entry.length >= Math.max(1, ...numAnswers)) {
+      game.entry = ""; // full-length miss: clear for the next try
+    }
   }
   $("game-entry").textContent = game.entry || " ";
 }
@@ -1266,7 +1302,7 @@ function gameKeyClock(key) {
   if (key === "back") game.entry = game.entry.slice(0, -1);
   else if (game.entry.length < 4) game.entry += key;
   const val = game.entry ? parseTimeEntry(game.entry) : NaN;
-  const hit = game.meteors.filter(m => m.answer === val).sort((a, b) => b.y - a.y)[0];
+  const hit = game.meteors.filter(m => m.isClock && m.answer === val).sort((a, b) => b.y - a.y)[0];
   if (hit) {
     blast(hit);
     game.entry = "";
@@ -1309,7 +1345,7 @@ function gamePickTry() {
   $("game-entry").textContent = `${h == null ? "–" : h}:${m == null ? "––" : String(m).padStart(2, "0")}`;
   if (h == null || m == null) return;
   const val = h * 100 + m;
-  const hit = game.meteors.filter(x => x.answer === val).sort((a, b) => b.y - a.y)[0];
+  const hit = game.meteors.filter(x => x.isClock && x.answer === val).sort((a, b) => b.y - a.y)[0];
   if (hit) {
     blast(hit);
     game.pickH = null; game.pickM = null;
@@ -1334,10 +1370,10 @@ function endGame() {
   game.over = true;
   if (game.raf) cancelAnimationFrame(game.raf);
   const best = loadBest();
-  const bestKey = game.kind === "clock" ? "clockBlaster" : "meteor";
+  const bestKey = game.kind === "clock" ? "clockBlaster" : game.kind === "mixed" ? "mixedBlaster" : "meteor";
   const prev = best[bestKey] || 0;
-  $("go-title").textContent = game.kind === "clock" ? T().gameOver.replace("☄️", "⏰") : T().gameOver;
-  $("go-score").textContent = `${game.kind === "clock" ? "⏰" : "☄️"} ${game.score}`;
+  $("go-title").textContent = game.kind === "num" ? T().gameOver : T().gameOver.replace("☄️", game.kind === "mixed" ? "🎮⏰" : "⏰");
+  $("go-score").textContent = `${game.kind === "num" ? "☄️" : game.kind === "mixed" ? "🎮⏰" : "⏰"} ${game.score}`;
   if (game.score > prev) {
     best[bestKey] = game.score;
     saveBest(best);
