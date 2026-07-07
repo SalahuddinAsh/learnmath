@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.7.0";
+const APP_VERSION = "1.8.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -47,8 +47,9 @@ const STRINGS = {
     diffNote: "Easy: answering after time runs out still counts, for fewer points",
     overtime: "⏰ Keep going — fewer points now",
     game: "Game unlock score", gameOff: "🚫 Off",
-    gameNote: "Score at least this much in a test to unlock one round of Meteor Blaster ☄️",
+    gameNote: "Score at least this much in a test to unlock one round of Meteor Blaster ☄️ (or Clock Blaster ⏰ if Time is selected)",
     gamePlay: "🎮 Play Meteor Blaster!",
+    gamePlayClock: "⏰ Play Clock Blaster!",
     gameOver: "Game over! ☄️",
     hours: "Hours", minutes: "Minutes",
     morning: "in the morning ☀️", afternoon: "in the afternoon 🌇", evening: "in the evening 🌙",
@@ -97,8 +98,9 @@ const STRINGS = {
     diffNote: "سهل: يمكن الإجابة بعد انتهاء الوقت لكن بنقاط أقل",
     overtime: "⏰ أكمل — النقاط أقل الآن",
     game: "نقاط فتح اللعبة", gameOff: "🚫 إيقاف",
-    gameNote: "احصل على هذه النقاط في الاختبار لتفتح جولة من صائد النيازك ☄️",
+    gameNote: "احصل على هذه النقاط في الاختبار لتفتح جولة من صائد النيازك ☄️ (أو صائد الساعات ⏰ إذا اخترت الوقت)",
     gamePlay: "!العب صائد النيازك 🎮",
+    gamePlayClock: "!العب صائد الساعات ⏰",
     gameOver: "انتهت اللعبة! ☄️",
     hours: "الساعات", minutes: "الدقائق",
     morning: "صباحًا ☀️", afternoon: "بعد الظهر 🌇", evening: "مساءً 🌙",
@@ -147,8 +149,9 @@ const STRINGS = {
     diffNote: "Leicht: Antworten nach Ablauf zählt noch, gibt aber weniger Punkte",
     overtime: "⏰ Weiter — jetzt weniger Punkte",
     game: "Punkte fürs Spiel", gameOff: "🚫 Aus",
-    gameNote: "Erreiche diese Punktzahl im Test, um eine Runde Meteor-Blaster freizuschalten ☄️",
+    gameNote: "Erreiche diese Punktzahl im Test, um eine Runde Meteor-Blaster freizuschalten ☄️ (oder Uhren-Blaster ⏰, wenn Uhrzeit ausgewählt ist)",
     gamePlay: "🎮 Meteor-Blaster spielen!",
+    gamePlayClock: "⏰ Uhren-Blaster spielen!",
     gameOver: "Game over! ☄️",
     hours: "Stunden", minutes: "Minuten",
     morning: "morgens ☀️", afternoon: "nachmittags 🌇", evening: "abends 🌙",
@@ -978,7 +981,9 @@ function finishQuiz() {
   $("sub-score").textContent = `✓ ${quiz.correct} / ${total}`;
   $("cheer").textContent = T()["cheer" + stars];
 
-  // qualifying score earns one round of the meteor game
+  // qualifying score earns one round of the reward game — Clock Blaster when
+  // Time was among the practiced operations, Meteor Blaster otherwise
+  $("btn-play-game").textContent = gameKindForCurrentSettings() === "clock" ? T().gamePlayClock : T().gamePlay;
   $("btn-play-game").hidden = !(settings.gameScore > 0 && score >= settings.gameScore);
 
   const best = loadBest();
@@ -1016,6 +1021,12 @@ function finishQuiz() {
 /* ================= Meteor Blaster (reward game) ================= */
 let game = null;
 
+// Clock Blaster launches instead of Meteor Blaster whenever the just-practiced
+// quiz included Time among its operations (kindergarten/tables never include it).
+function gameKindForCurrentSettings() {
+  return (settings.mode === "test" && settings.ops.includes("time")) ? "clock" : "num";
+}
+
 function gameCfg() {
   let ops = (settings.mode === "kg" ? settings.kgOps : settings.ops).filter(o => o !== "time");
   if (settings.mode === "tables") ops = ["mul"];
@@ -1031,26 +1042,55 @@ function gameCfg() {
   return cfg;
 }
 
+// clock times the kid has previously misread, so Clock Blaster can bring them back
+function loadWeakClockTimes() {
+  const w = loadWeak();
+  const out = [];
+  for (const key of Object.keys(w)) {
+    const m = key.match(/^time:(\d+):(\d+)$/);
+    if (m) for (let i = 0; i < w[key]; i++) out.push({ h: +m[1], m: +m[2] });
+  }
+  return out;
+}
+
+// Clock Blaster's own difficulty ladder: quarter-past/half only at first, then
+// quarters, then any 5-minute step — independent of the quiz's clock settings
+// so the in-game challenge always ramps up regardless of how the quiz was configured.
+function randomClockTime(level, weakTimes) {
+  if (weakTimes && weakTimes.length && Math.random() < WEAK_BIAS) {
+    const t = pick(weakTimes);
+    return { h: t.h, m: t.m, answer: t.h * 100 + t.m };
+  }
+  const h = rand(1, 12);
+  const m = level <= 0 ? pick([0, 30]) : level === 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
+  return { h, m, answer: h * 100 + m };
+}
+
 function startGame() {
   if ($("btn-play-game").hidden) return; // no ticket, no game
   $("btn-play-game").hidden = true; // the ticket is spent
   document.querySelectorAll("#sky .meteor").forEach(m => m.remove());
   $("game-over").hidden = true;
+  const kind = gameKindForCurrentSettings();
   game = {
-    cfg: gameCfg(), recent: [],
+    kind,
+    cfg: kind === "num" ? gameCfg() : null, recent: [],
+    clockLevel: 0, clockZaps: 0, weakTimes: kind === "clock" ? loadWeakClockTimes() : [],
     score: 0, lives: 3, meteors: [], entry: "",
     speed: 26, spawnEvery: 3000, sinceSpawn: 2500,
+    maxItems: kind === "clock" ? 3 : 4,
     over: false, prev: performance.now(), raf: null,
   };
   updateGameHud();
   $("game-entry").textContent = " ";
+  $("sky").classList.toggle("clock-sky", kind === "clock");
   showScreen("game");
   game.raf = requestAnimationFrame(gameTick);
 }
 
 function updateGameHud() {
   $("game-lives").textContent = "❤️".repeat(game.lives) || "💔";
-  $("game-score").textContent = `☄️ ${game.score}`;
+  $("game-score").textContent = `${game.kind === "clock" ? "⏰" : "☄️"} ${game.score}`;
 }
 
 function gameTick(now) {
@@ -1059,20 +1099,22 @@ function gameTick(now) {
   game.prev = now;
   const sky = $("sky");
   const H = sky.clientHeight;
+  const landY = game.kind === "clock" ? H - 78 : H - 52;
   game.sinceSpawn += dt * 1000;
-  if (game.sinceSpawn >= game.spawnEvery && game.meteors.length < 4) {
+  if (game.sinceSpawn >= game.spawnEvery && game.meteors.length < game.maxItems) {
     spawnMeteor();
     game.sinceSpawn = 0;
   }
   for (const m of [...game.meteors]) {
     m.y += game.speed * dt;
     m.el.style.top = m.y + "px";
-    if (m.y > H - 52) meteorLanded(m);
+    if (m.y > landY) meteorLanded(m);
   }
   game.raf = requestAnimationFrame(gameTick);
 }
 
 function spawnMeteor() {
+  if (game.kind === "clock") { spawnClockMeteor(); return; }
   const q = generateQuestion(game.cfg, game.recent);
   const el = document.createElement("div");
   el.className = "meteor";
@@ -1082,6 +1124,22 @@ function spawnMeteor() {
   el.style.top = "-50px";
   $("sky").appendChild(el);
   game.meteors.push({ q, el, y: -50 });
+}
+
+function spawnClockMeteor() {
+  let t;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    t = randomClockTime(game.clockLevel, game.weakTimes);
+    if (!game.meteors.some(x => x.answer === t.answer)) break;
+  }
+  const el = document.createElement("div");
+  el.className = "meteor clock-meteor";
+  el.dir = "ltr";
+  el.innerHTML = clockSVG(t.h, t.m, false);
+  el.style.left = (5 + Math.random() * 60) + "%";
+  el.style.top = "-70px";
+  $("sky").appendChild(el);
+  game.meteors.push({ answer: t.answer, el, y: -70 });
 }
 
 function removeMeteor(m) {
@@ -1118,12 +1176,19 @@ function blast(m) {
   // every blast makes the sky a little angrier
   game.speed += 1.5;
   game.spawnEvery = Math.max(1300, game.spawnEvery - 55);
+  if (game.kind === "clock") {
+    // Clock Blaster's own ladder: a few easy zaps, then quarters, then any 5 minutes
+    game.clockZaps++;
+    if (game.clockZaps === 3) game.clockLevel = 1;
+    else if (game.clockZaps === 7) game.clockLevel = 2;
+  }
   updateGameHud();
   beep([880, 1320], 0.08);
 }
 
 function gameKey(key) {
   if (!game || game.over) return;
+  if (game.kind === "clock") { gameKeyClock(key); return; }
   if (key === "back") game.entry = game.entry.slice(0, -1);
   else if (game.entry.length < 4) game.entry += key;
   const val = parseInt(game.entry, 10);
@@ -1138,14 +1203,30 @@ function gameKey(key) {
   $("game-entry").textContent = game.entry || " ";
 }
 
+function gameKeyClock(key) {
+  if (key === "back") game.entry = game.entry.slice(0, -1);
+  else if (game.entry.length < 4) game.entry += key;
+  const val = game.entry ? parseTimeEntry(game.entry) : NaN;
+  const hit = game.meteors.filter(m => m.answer === val).sort((a, b) => b.y - a.y)[0];
+  if (hit) {
+    blast(hit);
+    game.entry = "";
+  } else if (game.entry.length >= 4) {
+    game.entry = ""; // exhausted digits without a match: start over
+  }
+  $("game-entry").textContent = game.entry ? entryDisplay(game.entry, { op: "time" }) : " ";
+}
+
 function endGame() {
   game.over = true;
   if (game.raf) cancelAnimationFrame(game.raf);
   const best = loadBest();
-  const prev = best.meteor || 0;
-  $("go-score").textContent = `☄️ ${game.score}`;
+  const bestKey = game.kind === "clock" ? "clockBlaster" : "meteor";
+  const prev = best[bestKey] || 0;
+  $("go-title").textContent = game.kind === "clock" ? T().gameOver.replace("☄️", "⏰") : T().gameOver;
+  $("go-score").textContent = `${game.kind === "clock" ? "⏰" : "☄️"} ${game.score}`;
   if (game.score > prev) {
-    best.meteor = game.score;
+    best[bestKey] = game.score;
     saveBest(best);
     $("go-best").textContent = T().newRecord;
   } else {

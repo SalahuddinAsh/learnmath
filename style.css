@@ -221,6 +221,13 @@ h2 { font-size: 1.05rem; margin: 0 0 10px; color: #6b6790; font-weight: 600; }
 }
 .meteor.boom { animation: boom .4s forwards; box-shadow: none; background: none; font-size: 2.2rem; }
 @keyframes boom { 60% { transform: scale(1.6); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+.sky.clock-sky { background: linear-gradient(180deg, #0f1b3d, #2a3a7a); }
+.meteor.clock-meteor {
+  background: #fff; width: 74px; height: 74px; padding: 4px;
+  box-shadow: 0 0 18px rgba(94, 200, 248, .85), 0 0 4px #fff;
+}
+.meteor.clock-meteor svg { width: 100%; height: 100%; display: block; }
+.meteor.clock-meteor.boom { background: none; box-shadow: none; }
 .game-entry { margin: 0 auto; max-width: 220px; min-height: 56px; font-size: 2rem; }
 .game-pad .key { height: clamp(46px, 7dvh, 64px); }
 .game-pad .key-zero { grid-column: span 2; }
