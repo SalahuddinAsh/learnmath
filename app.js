@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.11.1";
+const APP_VERSION = "1.12.0";
 
 /* ================= tunable constants ================= */
 const RANGE_OPTIONS = [10, 20, 50, 100, 500, 1000];
@@ -36,6 +36,10 @@ const STRINGS = {
     level1: "Easy: 00 · 15 · 30 · 45", level2: "Every 5 minutes",
     clockMode: "Clock type", c12: "12-hour", c24: "24-hour", cDual: "Two answers: 7:15 + 19:15",
     whatTime2: "What time is it? Give both answers!",
+    clockTask: "Clock questions", taskRead: "Read the clock", taskShift: "Add & subtract hours", taskBoth: "Both",
+    shiftAfter: "What time is it {h} later?", shiftBefore: "What time was it {h} earlier?",
+    bothAnswers: "Give both answers!",
+    hoursWord: n => (n === 1 ? "1 hour" : `${n} hours`),
     timeInput: "Answer the time by", inputPick: "Picking buttons", inputType: "Typing",
     qFormat: "Question style",
     fmtResult: "Result only: 5 × 6 = ?", fmtMixed: "Mix in blanks: 5 × _ = 30",
@@ -89,6 +93,10 @@ const STRINGS = {
     level1: "سهل: 00 · 15 · 30 · 45", level2: "كل 5 دقائق",
     clockMode: "نوع الساعة", c12: "12 ساعة", c24: "24 ساعة", cDual: "إجابتان: 7:15 و 19:15",
     whatTime2: "كم الساعة؟ أعطِ الإجابتين!",
+    clockTask: "نوع أسئلة الساعة", taskRead: "قراءة الساعة", taskShift: "جمع وطرح الساعات", taskBoth: "الاثنان",
+    shiftAfter: "كم ستكون الساعة بعد {h}؟", shiftBefore: "كم كانت الساعة قبل {h}؟",
+    bothAnswers: "أعطِ الإجابتين!",
+    hoursWord: n => (n === 1 ? "ساعة واحدة" : n === 2 ? "ساعتين" : n <= 10 ? `${n} ساعات` : `${n} ساعة`),
     timeInput: "طريقة إجابة الوقت", inputPick: "اختيار الأزرار", inputType: "كتابة",
     qFormat: "نمط الأسئلة",
     fmtResult: "الناتج فقط (5 × 6 = ?)", fmtMixed: "مع فراغات (5 × _ = 30)",
@@ -142,6 +150,10 @@ const STRINGS = {
     level1: "Leicht: 00 · 15 · 30 · 45", level2: "Alle 5 Minuten",
     clockMode: "Uhrformat", c12: "12-Stunden", c24: "24-Stunden", cDual: "Zwei Antworten: 7:15 + 19:15",
     whatTime2: "Wie spät ist es? Nenne beide Antworten!",
+    clockTask: "Uhr-Aufgaben", taskRead: "Uhr ablesen", taskShift: "Stunden addieren & subtrahieren", taskBoth: "Beides",
+    shiftAfter: "Wie spät ist es {h} später?", shiftBefore: "Wie spät war es {h} früher?",
+    bothAnswers: "Nenne beide Antworten!",
+    hoursWord: n => (n === 1 ? "1 Stunde" : `${n} Stunden`),
     timeInput: "Uhrzeit eingeben per", inputPick: "Auswählen", inputType: "Tippen",
     qFormat: "Aufgabenstil",
     fmtResult: "Nur Ergebnis: 5 × 6 = ?", fmtMixed: "Mit Lücken: 5 × _ = 30",
@@ -184,7 +196,7 @@ const STRINGS = {
 const DEFAULTS = {
   lang: "en", mode: "test",
   ops: ["add"], range: 20, tables: [2, 3, 4, 5], count: 10, factorMax: 10,
-  timeLevel: 1, clockMode: "12", timeInput: "type", qFormat: "result",
+  timeLevel: 1, clockMode: "12", clockTask: "both", timeInput: "type", qFormat: "result",
   kgRange: 10, kgOps: ["add", "sub"], kgStyle: "shapes", kgTimer: true, kgSize: "l",
   sound: true, autoSubmit: true, difficulty: "medium", gameScore: 700,
 };
@@ -206,6 +218,7 @@ function loadSettings() {
       factorMax: s.factorMax === 12 ? 12 : 10,
       timeLevel: s.timeLevel === 2 ? 2 : 1,
       clockMode: ["12", "24", "dual"].includes(s.clockMode) ? s.clockMode : (s.clock24 === true ? "24" : "12"),
+      clockTask: ["read", "shift", "both"].includes(s.clockTask) ? s.clockTask : DEFAULTS.clockTask,
       timeInput: s.timeInput === "pick" ? "pick" : "type",
       qFormat: s.qFormat === "mixed" ? "mixed" : "result",
       kgRange: KG_RANGE_OPTIONS.includes(s.kgRange) ? s.kgRange
@@ -243,6 +256,9 @@ function saveWeak(w) {
 }
 function missKey(q) {
   if (q.op === "mul" || q.op === "div") return `f:${q.fa}x${q.fb}`;
+  // a shifted clock question is its own fact: reading 9:15 and "9:15, 5 hours later"
+  // are different skills, so the shift belongs in the key
+  if (q.op === "time" && q.shift) return `time:${q.a}:${q.b}:${q.shift}`;
   return `${q.op}:${q.a}:${q.b}`; // operands survive the blank transform
 }
 
@@ -294,20 +310,24 @@ function weakToQuestion(key, cfg) {
     const [d, ans] = Math.random() < 0.5 ? [n, k] : [k, n];
     return { op: "div", a: n * k, b: d, fa: n, fb: k, answer: ans };
   }
-  m = key.match(/^(add|sub|time):(\d+):(\d+)$/);
+  m = key.match(/^(add|sub|time):(\d+):(\d+)(?::(-?\d+))?$/);
   if (!m || !cfg.ops.includes(m[1])) return null;
   const op = m[1], a = +m[2], b = +m[3];
   if (op === "add") return a + b <= cfg.range ? { op, a, b, answer: a + b } : null;
   if (op === "sub") return a <= cfg.range && b < a ? { op, a, b, answer: a - b } : null;
   if (cfg.timeLevel === 1 && b % 15 !== 0) return null;
+  const shift = m[4] ? +m[4] : 0;
+  const task = cfg.clockTask || "read";
+  // only bring back the kind of clock question this quiz is set to ask
+  if (shift ? task === "read" : task === "shift") return null;
   const mode = cfg.clockMode || "12";
   if (mode === "dual") {
     const base = a > 12 ? a - 12 : a;
     if (base < 0 || base > 11) return null;
-    return { op: "time", a: base, b, dual: true, answer: base * 100 + b, answer2: (base + 12) * 100 + b };
+    return makeTimeQuestion(base, b, shift, mode);
   }
   if (mode !== "24" && (a < 1 || a > 12)) return null; // 12-hour clocks never show 0
-  return { op: "time", a, b, clock24: mode === "24", answer: a * 100 + b };
+  return makeTimeQuestion(a, b, shift, mode);
 }
 
 /* ================= high scores ================= */
@@ -328,7 +348,9 @@ function saveMistakes(list) {
   try { localStorage.setItem("mathstars-mistakes", JSON.stringify(list.slice(-200))); } catch {}
 }
 function mistakePromptText(q) {
-  return q.op === "time" ? "🕐" : questionText(q);
+  if (q.op !== "time") return questionText(q);
+  // the face alone doesn't say what was asked, so a shift question logs both
+  return q.shift ? `🕐 ${fmtTime(q.a * 100 + q.b)} ${q.shift > 0 ? "+" : "−"}${Math.abs(q.shift)}h` : "🕐";
 }
 function recordMistake(q, givenLabel) {
   const list = loadMistakes();
@@ -353,7 +375,7 @@ function generateQuestion(cfg, recent) {
       : makeOne(pick(cfg.ops), cfg);
     // mixed style: half the arithmetic questions hide the middle operand instead
     if (cfg.qFormat === "mixed" && q.op !== "time" && Math.random() < 0.5) toBlank(q);
-    const key = `${q.op}:${q.a}:${q.b}:${q.blank ? "_" : ""}`;
+    const key = `${q.op}:${q.a}:${q.b}:${q.shift || ""}:${q.blank ? "_" : ""}`;
     if (!recent.includes(key) || attempt >= 40) {
       recent.push(key);
       if (recent.length > 4) recent.shift();
@@ -362,18 +384,35 @@ function generateQuestion(cfg, recent) {
   }
 }
 
+// One time question. The clock face always shows h:m; `shift` (in hours, negative
+// = "before") is 0 for a plain reading and otherwise moves the answer off the face:
+// the kid reads 21:15 and answers 2:15 for "5 hours later". ansH is the answer's
+// hour — for shifted questions it differs from the displayed hour a.
+function makeTimeQuestion(h, m, shift, mode) {
+  if (mode === "dual") {
+    const ansH = (((h + shift) % 12) + 12) % 12;
+    return { op: "time", a: h, b: m, shift, ansH, dual: true, answer: ansH * 100 + m, answer2: (ansH + 12) * 100 + m };
+  }
+  const ansH = mode === "24"
+    ? (((h + shift) % 24) + 24) % 24
+    : (((h + shift) % 12) + 12) % 12 || 12; // 12-hour faces read 12, never 0
+  return { op: "time", a: h, b: m, shift, ansH, clock24: mode === "24", answer: ansH * 100 + m }; // 3:15 -> 315
+}
+
 function makeOne(op, cfg) {
   if (op === "time") {
     // read an analog clock; level 1 = quarter hours, level 2 = 5-minute steps.
     // "24": badge + converted hour. "dual": the face is ambiguous — both readings required.
     const mode = cfg.clockMode || "12";
     const m = cfg.timeLevel === 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
-    if (mode === "dual") {
-      const h = rand(0, 11); // skip 12 so the two answers are always distinct and < 24 (0 pairs with 12)
-      return { op, a: h, b: m, dual: true, answer: h * 100 + m, answer2: (h + 12) * 100 + m };
-    }
-    const h = mode === "24" ? rand(0, 23) : rand(1, 12); // 24-hour mode includes midnight (0:MM)
-    return { op, a: h, b: m, clock24: mode === "24", answer: h * 100 + m }; // 3:15 -> 315
+    const task = cfg.clockTask || "read";
+    const shift = (task === "shift" || (task === "both" && Math.random() < 0.5))
+      ? rand(1, 11) * (Math.random() < 0.5 ? 1 : -1)
+      : 0;
+    // dual skips 12 so the two answers are always distinct and < 24 (0 pairs with 12);
+    // 24-hour mode includes midnight (0:MM)
+    const h = mode === "dual" ? rand(0, 11) : mode === "24" ? rand(0, 23) : rand(1, 12);
+    return makeTimeQuestion(h, m, shift, mode);
   }
   if (op === "add") {
     const a = rand(1, Math.max(1, cfg.range - 1));
@@ -410,7 +449,12 @@ function toBlank(q) {
 }
 
 function questionText(q) {
-  if (q.op === "time") return q.dual ? T().whatTime2 : T().whatTime;
+  if (q.op === "time") {
+    if (!q.shift) return q.dual ? T().whatTime2 : T().whatTime;
+    const t = T();
+    const text = (q.shift > 0 ? t.shiftAfter : t.shiftBefore).replace("{h}", t.hoursWord(Math.abs(q.shift)));
+    return q.dual ? `${text} ${t.bothAnswers}` : text;
+  }
   if (q.blank) return `${q.a} ${OP_SYMBOL[q.op]} _ = ${q.result}`;
   return `${q.a} ${OP_SYMBOL[q.op]} ${q.b} = ?`;
 }
@@ -570,6 +614,9 @@ function buildSetup() {
   document.querySelectorAll("#clockmode-row .chip").forEach(chip => {
     chip.onclick = () => { settings.clockMode = chip.dataset.cmode; refreshSetup(); };
   });
+  document.querySelectorAll("#clocktask-row .chip").forEach(chip => {
+    chip.onclick = () => { settings.clockTask = chip.dataset.ctask; refreshSetup(); };
+  });
   document.querySelectorAll("#timeinput-row .chip").forEach(chip => {
     chip.onclick = () => { settings.timeInput = chip.dataset.timeinput; refreshSetup(); };
   });
@@ -618,6 +665,7 @@ function refreshSetup() {
   $("tables-note").hidden = !marathon;
   $("timelevel-group").hidden = !needsTimeLevel;
   $("clockmode-group").hidden = !needsTimeLevel;
+  $("clocktask-group").hidden = !needsTimeLevel;
   $("timeinput-group").hidden = !needsTimeLevel;
   $("count-group").hidden = marathon;
   $("btn-sound").textContent = settings.sound ? "🔊" : "🔇";
@@ -640,6 +688,7 @@ function refreshSetup() {
   document.querySelectorAll("#kgsize-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.kgsize === settings.kgSize));
   document.querySelectorAll("#timelevel-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.timelevel === settings.timeLevel));
   document.querySelectorAll("#clockmode-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.cmode === settings.clockMode));
+  document.querySelectorAll("#clocktask-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.ctask === settings.clockTask));
   document.querySelectorAll("#timeinput-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.timeinput === settings.timeInput));
   document.querySelectorAll("#qformat-row .chip").forEach(c => c.classList.toggle("selected", c.dataset.qformat === settings.qFormat));
   document.querySelectorAll("#factor-row .chip").forEach(c => c.classList.toggle("selected", +c.dataset.factor === settings.factorMax));
@@ -673,6 +722,7 @@ function applyLang() {
   $("tables-note").textContent = t.tablesNote;
   $("t-timelevel").textContent = t.timeLevel;
   $("t-clockmode").textContent = t.clockMode;
+  $("t-clocktask").textContent = t.clockTask;
   $("t-timeinput").textContent = t.timeInput;
   $("t-qformat").textContent = t.qFormat;
   $("t-auto").textContent = t.auto;
@@ -744,6 +794,7 @@ function buildQuestions() {
     factorMax: settings.factorMax,
     timeLevel: settings.timeLevel,
     clockMode: settings.clockMode,
+    clockTask: settings.clockTask,
     qFormat: settings.qFormat,
   };
   cfg.weakQs = weakQuestions(cfg);
@@ -813,8 +864,8 @@ function nextQuestion() {
     quiz.timerStart = performance.now();
     quiz.timerTotal = Infinity;
   } else {
-    // two readings take longer than one
-    startTimer(q.dual ? Math.round(timeFor() * 1.5) : timeFor());
+    // two readings take longer than one, and so does counting hours off the face
+    startTimer(Math.round(timeFor() * (q.dual ? 1.5 : 1) * (q.shift ? 1.5 : 1)));
   }
 }
 
@@ -893,11 +944,12 @@ function stopTimer() {
 }
 
 // how many digits a fully-typed answer should be. For time questions this must
-// come from the hour itself (String(q.a).length), not String(q.answer).length —
-// a midnight hour (0) contributes no digits to the numeric answer value, so
-// deriving expected length from the answer alone would under-count by one.
+// come from the answer's hour (q.ansH), not String(q.answer).length — a midnight
+// hour (0) contributes no digits to the numeric answer value, so deriving expected
+// length from the answer alone would under-count by one. On a shifted question the
+// answer's hour is not the one on the face, so q.a would be wrong here too.
 function expectedEntryLength(q) {
-  if (q.op === "time") return String(q.a).length + 2; // hour digits + always-2-digit minutes
+  if (q.op === "time") return String(q.ansH).length + 2; // hour digits + always-2-digit minutes
   return String(q.answer).length;
 }
 
