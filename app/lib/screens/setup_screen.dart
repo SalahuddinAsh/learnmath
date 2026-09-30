@@ -7,7 +7,7 @@ import '../services/settings_controller.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-const String kAppVersion = "1.0.0"; // keep in sync with pubspec.yaml `version:`
+const String kAppVersion = "1.0.1"; // keep in sync with pubspec.yaml `version:`
 
 /// The setup card — mirrors #screen-setup plus buildSetup()/refreshSetup().
 /// Only what the native app can play so far is shown; the rest of the web
@@ -35,7 +35,7 @@ class SetupScreen extends StatelessWidget {
 
     return Directionality(
       textDirection: s.lang == "ar" ? TextDirection.rtl : TextDirection.ltr,
-      child: ScreenBackground(
+      child: WhitePage(
         child: Center(
           child: SingleChildScrollView(
             child: AppCard(

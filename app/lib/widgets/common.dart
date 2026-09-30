@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme.dart';
 
@@ -44,28 +45,39 @@ class ScreenBackground extends StatelessWidget {
   const ScreenBackground({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: const BoxDecoration(gradient: AppColors.bgGradient),
-        child: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: child)),
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Container(
+          decoration: const BoxDecoration(gradient: AppColors.bgGradient),
+          child: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: child)),
+        ),
       );
 }
 
-/// White rounded card, max 620 wide — `.card`.
+/// Full-screen white page (setup, results): fills the screen edge to edge
+/// like a normal app, with dark status-bar text.
+class WhitePage extends StatelessWidget {
+  final Widget child;
+  const WhitePage({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark,
+        child: ColoredBox(color: Colors.white, child: SafeArea(child: child)),
+      );
+}
+
+/// The page's content column: comfortable padding, and on wide screens
+/// (iPad) kept to a readable width in the middle.
 class AppCard extends StatelessWidget {
   final Widget child;
   const AppCard({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) => ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 40, offset: Offset(0, 12))],
-          ),
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: child,
         ),
       );

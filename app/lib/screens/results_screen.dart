@@ -20,7 +20,7 @@ class ResultsScreen extends StatelessWidget {
     final r = result;
     return Directionality(
       textDirection: lang == "ar" ? TextDirection.rtl : TextDirection.ltr,
-      child: ScreenBackground(
+      child: WhitePage(
         child: Center(
           child: SingleChildScrollView(
             child: AppCard(
