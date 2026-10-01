@@ -50,9 +50,12 @@ class AppColors {
 }
 
 ThemeData buildAppTheme() => ThemeData(
-      useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.purple,
-      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.purple, primary: AppColors.purple),
-      splashFactory: NoSplash.splashFactory,
-      highlightColor: Colors.transparent,
-    );
+  useMaterial3: true,
+  scaffoldBackgroundColor: AppColors.purple,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: AppColors.purple,
+    primary: AppColors.purple,
+  ),
+  splashFactory: NoSplash.splashFactory,
+  highlightColor: Colors.transparent,
+);

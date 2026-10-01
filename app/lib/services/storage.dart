@@ -11,6 +11,9 @@ class Storage {
     _prefs ??= await SharedPreferences.getInstance();
   }
 
+  /// Tests: forget everything saved so one test can't leak into the next.
+  static Future<void> clearForTest() async => _prefs?.clear();
+
   static Object? _get(String key) {
     final raw = _prefs?.getString(key);
     if (raw == null) return null;

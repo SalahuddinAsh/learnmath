@@ -1,4 +1,9 @@
-const Map<String, String> kOpSymbol = {"add": "+", "sub": "−", "mul": "×", "div": "÷"};
+const Map<String, String> kOpSymbol = {
+  "add": "+",
+  "sub": "−",
+  "mul": "×",
+  "div": "÷",
+};
 
 /// One quiz question — mirrors the plain `q` objects built by makeOne()/
 /// makeTimeQuestion()/toBlank() in app.js. Mutable because toBlank() rewrites
@@ -39,18 +44,19 @@ class Question {
     this.fb,
   });
 
-  Question copy() => Question(op: op, a: a, b: b, answer: answer, fa: fa, fb: fb)
-    ..blank = blank
-    ..result = result
-    ..shift = shift
-    ..ansH = ansH
-    ..dual = dual
-    ..answer2 = answer2
-    ..clock24 = clock24
-    ..kg = kg
-    ..untimed = untimed
-    ..kgStyle = kgStyle
-    ..emoji = emoji;
+  Question copy() =>
+      Question(op: op, a: a, b: b, answer: answer, fa: fa, fb: fb)
+        ..blank = blank
+        ..result = result
+        ..shift = shift
+        ..ansH = ansH
+        ..dual = dual
+        ..answer2 = answer2
+        ..clock24 = clock24
+        ..kg = kg
+        ..untimed = untimed
+        ..kgStyle = kgStyle
+        ..emoji = emoji;
 
   bool get isTime => op == "time";
 
@@ -62,7 +68,8 @@ class Question {
   }
 
   /// Key used to avoid repeating one of the last few questions.
-  String get recentKey => "$op:$a:$b:${shift == 0 ? "" : shift}:${blank ? "_" : ""}";
+  String get recentKey =>
+      "$op:$a:$b:${shift == 0 ? "" : shift}:${blank ? "_" : ""}";
 
   /// Digits a fully typed answer has; time answers count hour digits + 2 minute
   /// digits from ansH, since a midnight hour adds no digits to `answer` itself.

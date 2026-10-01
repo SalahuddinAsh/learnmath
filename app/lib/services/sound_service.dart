@@ -17,7 +17,10 @@ class SoundService {
       final player = AudioPlayer();
       unawaited(player.setReleaseMode(ReleaseMode.release).catchError((_) {}));
       unawaited(player.play(AssetSource("sounds/$file")).catchError((_) {}));
-      player.onPlayerComplete.listen((_) => unawaited(player.dispose().catchError((_) {})), onError: (_) {});
+      player.onPlayerComplete.listen(
+        (_) => unawaited(player.dispose().catchError((_) {})),
+        onError: (_) {},
+      );
     } catch (_) {}
   }
 

@@ -14,8 +14,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await Storage.init();
-    WeakMemory.save({});
-    MistakeLog.clear();
+    await Storage.clearForTest();
   });
 
   group("question generator", () {
@@ -41,7 +40,12 @@ void main() {
     });
 
     test("× and ÷ come only from the chosen tables", () {
-      final cfg = QuizConfig(ops: ["mul", "div"], range: 20, tables: [3, 7], factorMax: 12);
+      final cfg = QuizConfig(
+        ops: ["mul", "div"],
+        range: 20,
+        tables: [3, 7],
+        factorMax: 12,
+      );
       for (var i = 0; i < 2000; i++) {
         final q = gen.makeOne(i.isEven ? "mul" : "div", cfg);
         expect([3, 7], contains(q.fa));
@@ -54,32 +58,48 @@ void main() {
       }
     });
 
-    test("blank questions: the answer is the hidden operand, × shows the table number", () {
-      final cfg = QuizConfig(ops: ["add", "sub", "mul", "div"], range: 50, tables: [4], qFormat: "mixed");
-      var blanks = 0;
-      final recent = <String>[];
-      for (var i = 0; i < 2000; i++) {
-        final q = gen.generate(cfg, recent);
-        if (!q.blank) continue;
-        blanks++;
-        expect(q.answer, q.b);
-        final r = switch (q.op) { "add" => q.a + q.b, "sub" => q.a - q.b, "mul" => q.a * q.b, _ => q.a ~/ q.b };
-        expect(q.result, r);
-        if (q.op == "mul") expect(q.a, 4);
-      }
-      expect(blanks, greaterThan(500));
-    });
+    test(
+      "blank questions: the answer is the hidden operand, × shows the table number",
+      () {
+        final cfg = QuizConfig(
+          ops: ["add", "sub", "mul", "div"],
+          range: 50,
+          tables: [4],
+          qFormat: "mixed",
+        );
+        var blanks = 0;
+        final recent = <String>[];
+        for (var i = 0; i < 2000; i++) {
+          final q = gen.generate(cfg, recent);
+          if (!q.blank) continue;
+          blanks++;
+          expect(q.answer, q.b);
+          final r = switch (q.op) {
+            "add" => q.a + q.b,
+            "sub" => q.a - q.b,
+            "mul" => q.a * q.b,
+            _ => q.a ~/ q.b,
+          };
+          expect(q.result, r);
+          if (q.op == "mul") expect(q.a, 4);
+        }
+        expect(blanks, greaterThan(500));
+      },
+    );
 
-    test("no repeat of the previous question when there's room to avoid it", () {
-      final cfg = QuizConfig(ops: ["add"], range: 20);
-      final recent = <String>[];
-      String? prev;
-      for (var i = 0; i < 500; i++) {
-        final k = gen.generate(cfg, recent).recentKey;
-        expect(k, isNot(prev));
-        prev = k;
-      }
-    });
+    test(
+      "no repeat of the previous question when there's room to avoid it",
+      () {
+        final cfg = QuizConfig(ops: ["add"], range: 20);
+        final recent = <String>[];
+        String? prev;
+        for (var i = 0; i < 500; i++) {
+          final k = gen.generate(cfg, recent).recentKey;
+          expect(k, isNot(prev));
+          prev = k;
+        }
+      },
+    );
 
     test("time answers match makeTimeQuestion in app.js", () {
       expect(gen.makeTimeQuestion(9, 15, 5, "12").answer, 215);
@@ -88,11 +108,19 @@ void main() {
       expect(gen.makeTimeQuestion(2, 0, -3, "24").answer, 2300);
       final d = gen.makeTimeQuestion(7, 15, 0, "dual");
       expect([d.answer, d.answer2], [715, 1915]);
-      expect(gen.makeTimeQuestion(0, 30, 0, "24").expectedEntryLength, 3); // "030"
+      expect(
+        gen.makeTimeQuestion(0, 30, 0, "24").expectedEntryLength,
+        3,
+      ); // "030"
     });
 
     test("weak keys come back only when they fit the settings", () {
-      final cfg = QuizConfig(ops: ["add", "mul"], range: 20, tables: [3], factorMax: 10);
+      final cfg = QuizConfig(
+        ops: ["add", "mul"],
+        range: 20,
+        tables: [3],
+        factorMax: 10,
+      );
       expect(gen.weakToQuestion("add:5:7", cfg)?.answer, 12);
       expect(gen.weakToQuestion("add:15:7", cfg), isNull); // over the range
       expect(gen.weakToQuestion("sub:9:4", cfg), isNull); // sub not selected
@@ -104,7 +132,9 @@ void main() {
     test("tables mode: all facts in order, then weak ones again", () {
       WeakMemory.save({"f:2x7": 2, "f:9x1": 1});
       final s = Settings(mode: "tables", tables: [3, 2], factorMax: 10);
-      final qs = QuestionGenerator(Random(2)).buildQuestions(s, WeakMemory.load());
+      final qs = QuestionGenerator(
+        Random(2),
+      ).buildQuestions(s, WeakMemory.load());
       expect(qs.length, 21);
       expect(qs.first.solvedText, "2 × 1 = 2");
       expect(qs[19].solvedText, "3 × 10 = 30");
@@ -129,32 +159,42 @@ void main() {
   });
 
   group("quiz controller", () {
-    List<Question> sums(int n) => List.generate(n, (i) => Question(op: "add", a: i + 1, b: 10, answer: i + 11));
+    List<Question> sums(int n) => List.generate(
+      n,
+      (i) => Question(op: "add", a: i + 1, b: 10, answer: i + 11),
+    );
 
-    test("instant answers score about 1000; wrong ones are logged and missed", () {
-      fakeAsync((fa) {
-        final quiz = QuizController(Settings(count: 5), sums(5), Random(3))..start();
-        for (var i = 0; i < 5; i++) {
-          final q = quiz.current;
-          final typed = i == 2 ? "99" : "${q.answer}";
-          for (final ch in typed.split("")) {
-            quiz.key(ch);
+    test(
+      "instant answers score about 1000; wrong ones are logged and missed",
+      () {
+        fakeAsync((fa) {
+          final quiz = QuizController(Settings(count: 5), sums(5), Random(3))
+            ..start();
+          for (var i = 0; i < 5; i++) {
+            final q = quiz.current;
+            final typed = i == 2 ? "99" : "${q.answer}";
+            for (final ch in typed.split("")) {
+              quiz.key(ch);
+            }
+            fa.elapse(
+              Duration(milliseconds: i == 2 ? 2000 : 900),
+            ); // just the feedback pause
           }
-          fa.elapse(Duration(milliseconds: i == 2 ? 2000 : 900)); // just the feedback pause
-        }
-        expect(quiz.result, isNotNull);
-        expect(quiz.result!.correct, 4);
-        expect(quiz.result!.missed.single.answer, 13);
-        expect(quiz.result!.score, closeTo(800, 5));
-        expect(MistakeLog.load().single.given, "99");
-        expect(WeakMemory.load()["add:3:10"], 1);
-        quiz.dispose();
-      });
-    });
+          expect(quiz.result, isNotNull);
+          expect(quiz.result!.correct, 4);
+          expect(quiz.result!.missed.single.answer, 13);
+          expect(quiz.result!.score, closeTo(800, 5));
+          expect(MistakeLog.load().single.given, "99");
+          expect(WeakMemory.load()["add:3:10"], 1);
+          quiz.dispose();
+        });
+      },
+    );
 
     test("with the OK button, nothing is submitted until ✓", () {
       fakeAsync((fa) {
-        final quiz = QuizController(Settings(autoSubmit: false), sums(1))..start();
+        final quiz = QuizController(Settings(autoSubmit: false), sums(1))
+          ..start();
         quiz.key("1");
         quiz.key("1");
         quiz.key("5");
@@ -169,7 +209,8 @@ void main() {
 
     test("medium: time runs out → shown as wrong with the answer", () {
       fakeAsync((fa) {
-        final quiz = QuizController(Settings(difficulty: "medium"), sums(2))..start();
+        final quiz = QuizController(Settings(difficulty: "medium"), sums(2))
+          ..start();
         fa.elapse(const Duration(seconds: 21));
         expect(quiz.answerMood, Mood.bad);
         expect(quiz.answerDisplay, "11");
@@ -178,18 +219,22 @@ void main() {
       });
     });
 
-    test("easy: after the buzzer answers still count, for 30% of the points", () {
-      fakeAsync((fa) {
-        final quiz = QuizController(Settings(difficulty: "easy"), sums(1))..start();
-        fa.elapse(const Duration(seconds: 31));
-        expect(quiz.overtime, isTrue);
-        expect(quiz.locked, isFalse);
-        quiz.key("1");
-        quiz.key("1");
-        expect(quiz.answerMood, Mood.good);
-        expect(quiz.points, closeTo(300, 0.01));
-        quiz.dispose();
-      });
-    });
+    test(
+      "easy: after the buzzer answers still count, for 30% of the points",
+      () {
+        fakeAsync((fa) {
+          final quiz = QuizController(Settings(difficulty: "easy"), sums(1))
+            ..start();
+          fa.elapse(const Duration(seconds: 31));
+          expect(quiz.overtime, isTrue);
+          expect(quiz.locked, isFalse);
+          quiz.key("1");
+          quiz.key("1");
+          expect(quiz.answerMood, Mood.good);
+          expect(quiz.points, closeTo(300, 0.01));
+          quiz.dispose();
+        });
+      },
+    );
   });
 }

@@ -9,7 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Plays a whole round through the real screens at iPad and small-iPhone
 /// sizes; any layout overflow fails the test.
 void main() {
-  for (final (name, size) in const [("iPad", Size(820, 1180)), ("iPhone SE", Size(375, 667))]) {
+  for (final (name, size) in const [
+    ("iPad", Size(820, 1180)),
+    ("iPhone SE", Size(375, 667)),
+  ]) {
     for (final lang in const ["en", "ar"]) {
       testWidgets("setup → quiz → results on $name ($lang)", (tester) async {
         tester.view.physicalSize = size;
@@ -17,6 +20,7 @@ void main() {
         addTearDown(tester.view.reset);
         SharedPreferences.setMockInitialValues({});
         await Storage.init();
+        await Storage.clearForTest();
         final settings = SettingsController()..load();
         settings.update((s) {
           s.lang = lang;
@@ -33,9 +37,13 @@ void main() {
         await tester.pump();
 
         for (var i = 0; i < 5; i++) {
-          final quiz = (tester.state(find.byType(AppRoot)) as dynamic).quizForTest as QuizController;
+          final quiz =
+              (tester.state(find.byType(AppRoot)) as dynamic).quizForTest
+                  as QuizController;
           final right = "${quiz.current.answer}";
-          final answer = i == 1 ? "0" * right.length : right; // one wrong answer
+          final answer = i == 1
+              ? "0" * right.length
+              : right; // one wrong answer
           for (final d in answer.split("")) {
             await tester.tap(find.text(d).last);
             await tester.pump();
@@ -43,7 +51,10 @@ void main() {
           await tester.pump(const Duration(milliseconds: 2100));
         }
         await tester.pump();
-        expect(find.textContaining("/ 1000", findRichText: true), findsOneWidget);
+        expect(
+          find.textContaining("/ 1000", findRichText: true),
+          findsOneWidget,
+        );
         expect(find.textContaining("✓ 4 / 5"), findsOneWidget);
       });
     }

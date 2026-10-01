@@ -9,7 +9,8 @@ import '../models/question.dart';
 import '../models/settings.dart';
 import '../services/progress_store.dart';
 
-const double kOvertimeFactor = 0.3; // share of a question's points for an overtime answer
+const double kOvertimeFactor =
+    0.3; // share of a question's points for an overtime answer
 
 enum Mood { none, good, bad }
 
@@ -39,7 +40,9 @@ String questionText(Question q, String lang) {
   final t = kStrings[lang]!;
   if (q.isTime) {
     if (q.shift == 0) return t.s(q.dual ? "whatTime2" : "whatTime");
-    final text = t.s(q.shift > 0 ? "shiftAfter" : "shiftBefore").replaceAll("{h}", hoursWord(lang, q.shift.abs()));
+    final text = t
+        .s(q.shift > 0 ? "shiftAfter" : "shiftBefore")
+        .replaceAll("{h}", hoursWord(lang, q.shift.abs()));
     return q.dual ? "$text ${t.s("bothAnswers")}" : text;
   }
   if (q.blank) return "${q.a} ${kOpSymbol[q.op]} _ = ${q.result}";
@@ -47,7 +50,11 @@ String questionText(Question q, String lang) {
 }
 
 String answerText(Question q) {
-  if (q.isTime) return q.dual ? "${fmtTime(q.answer)} / ${fmtTime(q.answer2!)}" : fmtTime(q.answer);
+  if (q.isTime) {
+    return q.dual
+        ? "${fmtTime(q.answer)} / ${fmtTime(q.answer2!)}"
+        : fmtTime(q.answer);
+  }
   return "${q.answer}";
 }
 
@@ -59,13 +66,15 @@ String mistakePrompt(Question q, String lang) {
 }
 
 /// Typed digits as shown in the answer box ("315" → "3:15" for time).
-String entryDisplay(String entry, Question q) =>
-    q.isTime && entry.length >= 3 ? "${entry.substring(0, entry.length - 2)}:${entry.substring(entry.length - 2)}" : entry;
+String entryDisplay(String entry, Question q) => q.isTime && entry.length >= 3
+    ? "${entry.substring(0, entry.length - 2)}:${entry.substring(entry.length - 2)}"
+    : entry;
 
 /// Typed time digits → h*100+m; "3" means 3:00.
 int parseTimeEntry(String entry) => entry.length <= 2
     ? int.parse(entry) * 100
-    : int.parse(entry.substring(0, entry.length - 2)) * 100 + int.parse(entry.substring(entry.length - 2));
+    : int.parse(entry.substring(0, entry.length - 2)) * 100 +
+          int.parse(entry.substring(entry.length - 2));
 
 /// Drives one round — mirrors the `quiz` object and startQuiz/nextQuestion/
 /// onKey/submit/onTimeout/advance/finishQuiz in app.js. The screens only
@@ -89,6 +98,8 @@ class QuizController extends ChangeNotifier {
   Mood feedbackMood = Mood.none;
   String feedbackText = "";
   Set<int>? dualLeft;
+  int? pickH; // pick-style time input
+  int? pickM;
 
   // timer
   bool timed = true;
@@ -103,15 +114,32 @@ class QuizController extends ChangeNotifier {
   VoidCallback? onGood, onBad, onTick, onPartial;
 
   QuizController(Settings settings, this.questions, [Random? rng])
-      : settings = settings.copy(),
-        _rng = rng ?? Random();
+    : settings = settings.copy(),
+      _rng = rng ?? Random();
 
   L10n get t => kStrings[settings.lang]!;
   Question get current => questions[min(index, questions.length - 1)];
   int get scoreRounded => points.round();
 
+  /// Time questions answered with the hour/minute buttons instead of the numpad.
+  bool get usesPick => current.isTime && settings.timeInput == "pick";
+
+  /// Hours offered by the picker: 24-hour and dual clocks include midnight (0).
+  List<int> get pickHours => (current.clock24 || current.dual)
+      ? List.generate(24, (i) => i)
+      : List.generate(12, (i) => i + 1);
+
+  List<int> get pickMinutes => settings.timeLevel == 1
+      ? const [0, 15, 30, 45]
+      : List.generate(12, (i) => i * 5);
+
+  bool get pickComplete => pickH != null && pickM != null;
+
   String get answerDisplay {
     if (answerOverride.isNotEmpty) return answerOverride;
+    if (usesPick) {
+      return "${pickH ?? "–"}:${pickM == null ? "––" : pickM.toString().padLeft(2, "0")}";
+    }
     return entryDisplay(entry, current);
   }
 
@@ -119,6 +147,8 @@ class QuizController extends ChangeNotifier {
 
   void _begin() {
     entry = "";
+    pickH = null;
+    pickM = null;
     locked = false;
     overtime = false;
     answerMood = Mood.none;
@@ -130,7 +160,11 @@ class QuizController extends ChangeNotifier {
     timed = !q.untimed;
     if (timed) {
       // two readings take longer than one, and so does counting hours off the face
-      final secs = (settings.secondsPerQuestion * (q.dual ? 1.5 : 1) * (q.shift != 0 ? 1.5 : 1)).round();
+      final secs =
+          (settings.secondsPerQuestion *
+                  (q.dual ? 1.5 : 1) *
+                  (q.shift != 0 ? 1.5 : 1))
+              .round();
       _startTimer(secs);
     } else {
       // no time pressure: every correct answer gets the full speed bonus
@@ -188,7 +222,7 @@ class QuizController extends ChangeNotifier {
 
   /// Numpad input: a digit, "back" or "ok".
   void key(String k) {
-    if (locked) return;
+    if (locked || usesPick) return;
     final q = current;
     if (k == "back") {
       if (entry.isNotEmpty) entry = entry.substring(0, entry.length - 1);
@@ -200,7 +234,8 @@ class QuizController extends ChangeNotifier {
       // instant mode: submit once the expected number of digits is typed
       // (dual clock: either reading may come first, so match against both)
       final full = q.dual
-          ? (dualLeft?.contains(parseTimeEntry(entry)) ?? false) || entry.length >= 4
+          ? (dualLeft?.contains(parseTimeEntry(entry)) ?? false) ||
+                entry.length >= 4
           : entry.length >= q.expectedEntryLength;
       if (settings.autoSubmit && full) {
         _submit();
@@ -210,13 +245,42 @@ class QuizController extends ChangeNotifier {
     _notify();
   }
 
+  void pickHour(int h) {
+    if (locked) return;
+    pickH = h;
+    _pickChanged();
+  }
+
+  void pickMinute(int m) {
+    if (locked) return;
+    pickM = m;
+    _pickChanged();
+  }
+
+  /// The ✓ under the picker (only shown without instant entry).
+  void pickOk() {
+    if (!locked && pickComplete) _submit();
+  }
+
+  void _pickChanged() {
+    // instant mode: submit as soon as both hour and minute are chosen
+    if (settings.autoSubmit && pickComplete) {
+      _submit();
+      return;
+    }
+    _notify();
+  }
+
   void _submit() {
     final q = current;
-    final given = q.isTime ? parseTimeEntry(entry) : int.parse(entry);
+    final given = q.isTime
+        ? (usesPick ? pickH! * 100 + pickM! : parseTimeEntry(entry))
+        : int.parse(entry);
     // dual clock: the first correct reading keeps the question open for the second
     if (q.dual && dualLeft!.length == 2 && dualLeft!.contains(given)) {
       dualLeft!.remove(given);
       entry = "";
+      pickH = null;
       feedbackMood = Mood.good;
       feedbackText = "✓ ${fmtTime(given)}";
       onPartial?.call();
@@ -232,7 +296,9 @@ class QuizController extends ChangeNotifier {
       // faster answers earn more: full value instantly, half at the buzzer,
       // and a small share for overtime answers on easy
       final maxPts = 1000 / questions.length;
-      final pts = overtime ? maxPts * kOvertimeFactor : maxPts * (0.5 + 0.5 * frac);
+      final pts = overtime
+          ? maxPts * kOvertimeFactor
+          : maxPts * (0.5 + 0.5 * frac);
       correct++;
       points += pts;
       answerMood = Mood.good;
@@ -243,7 +309,11 @@ class QuizController extends ChangeNotifier {
       _after(900);
     } else {
       missed.add(q);
-      MistakeLog.add(mistakePrompt(q, settings.lang), answerText(q), q.isTime ? fmtTime(given) : "$given");
+      MistakeLog.add(
+        mistakePrompt(q, settings.lang),
+        answerText(q),
+        q.isTime ? fmtTime(given) : "$given",
+      );
       answerMood = Mood.bad;
       feedbackMood = Mood.bad;
       feedbackText = "${t.s("answerIs")}: ${answerText(q)}";
@@ -285,7 +355,13 @@ class QuizController extends ChangeNotifier {
   void _finish() {
     _stopTimer();
     final score = points.round();
-    final stars = score >= 900 ? 3 : score >= 700 ? 2 : score >= 450 ? 1 : 0;
+    final stars = score >= 900
+        ? 3
+        : score >= 700
+        ? 2
+        : score >= 450
+        ? 1
+        : 0;
     final isNewRecord = HighScores.recordIfBest(settings.mode, score);
     result = QuizResult(
       score: score,

@@ -12,7 +12,20 @@ class ResultsScreen extends StatelessWidget {
   final String lang;
   final VoidCallback onAgain;
   final VoidCallback onSettings;
-  const ResultsScreen({super.key, required this.result, required this.lang, required this.onAgain, required this.onSettings});
+
+  /// The reward-game button label ("gamePlay" / "gamePlayClock" / "gamePlayMixed"),
+  /// or null when there's no ticket (score too low, game off, or already played).
+  final String? gameLabelKey;
+  final VoidCallback onPlayGame;
+  const ResultsScreen({
+    super.key,
+    required this.result,
+    required this.lang,
+    required this.onAgain,
+    required this.onSettings,
+    required this.gameLabelKey,
+    required this.onPlayGame,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,29 +40,59 @@ class ResultsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(r.stars > 0 ? "⭐" * r.stars : "🌱",
-                      textAlign: TextAlign.center, style: const TextStyle(fontSize: 52, letterSpacing: 6)),
+                  Text(
+                    r.stars > 0 ? "⭐" * r.stars : "🌱",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 52, letterSpacing: 6),
+                  ),
                   const SizedBox(height: 6),
-                  Text(t.s("score"),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.text)),
+                  Text(
+                    t.s("score"),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: "${r.score} "),
-                      const TextSpan(text: "/ 1000", style: TextStyle(fontSize: 22, color: AppColors.muted, fontWeight: FontWeight.w700)),
-                    ]),
+                    TextSpan(
+                      children: [
+                        TextSpan(text: "${r.score} "),
+                        const TextSpan(
+                          text: "/ 1000",
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                     textAlign: TextAlign.center,
                     textDirection: TextDirection.ltr,
-                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: AppColors.purple),
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.purple,
+                    ),
                   ),
-                  Text("✓ ${r.correct} / ${r.total}",
-                      textAlign: TextAlign.center,
-                      textDirection: TextDirection.ltr,
-                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.goodDark)),
+                  Text(
+                    "✓ ${r.correct} / ${r.total}",
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.goodDark,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    r.isNewRecord ? t.s("newRecord") : "${t.s("best")}: ${r.best}",
+                    r.isNewRecord
+                        ? t.s("newRecord")
+                        : "${t.s("best")}: ${r.best}",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: r.isNewRecord ? 21 : 18,
@@ -58,36 +101,71 @@ class ResultsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(t.s("cheer${r.stars}"),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: AppColors.heading)),
+                  Text(
+                    t.s("cheer${r.stars}"),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.heading,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   if (r.missed.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.missedBg,
-                        border: Border.all(color: AppColors.missedBorder, width: 2),
+                        border: Border.all(
+                          color: AppColors.missedBorder,
+                          width: 2,
+                        ),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t.s("review"),
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.badDark)),
+                          Text(
+                            t.s("review"),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.badDark,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           for (final q in r.missed)
                             Text(
                               q.isTime ? "🕐 ${answerText(q)}" : q.solvedText,
                               textDirection: TextDirection.ltr,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.6, color: AppColors.textMid),
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                height: 1.6,
+                                color: AppColors.textMid,
+                              ),
                             ),
                         ],
                       ),
                     ),
+                  if (gameLabelKey != null)
+                    BigButton(
+                      label: t.s(gameLabelKey!),
+                      onTap: onPlayGame,
+                      gradient: const LinearGradient(
+                        colors: [AppColors.purple, AppColors.sky],
+                      ),
+                    ),
                   BigButton(label: t.s("again"), onTap: onAgain),
-                  BigButton(label: t.s("settings"), onTap: onSettings, secondary: true),
+                  BigButton(
+                    label: t.s("settings"),
+                    onTap: onSettings,
+                    secondary: true,
+                  ),
                 ],
               ),
             ),

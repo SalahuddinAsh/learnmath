@@ -17,6 +17,12 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void replace(Settings s) {
+    _settings = s;
+    Storage.setJson(_key, s.toJson());
+    notifyListeners();
+  }
+
   /// Mutate, persist, notify — the "change settings.x, then refreshSetup()" pattern.
   void update(void Function(Settings s) mutator) {
     mutator(_settings);

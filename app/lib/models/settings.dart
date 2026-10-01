@@ -54,25 +54,33 @@ class Settings {
     this.autoSubmit = true,
     this.difficulty = "medium",
     this.gameScore = 700,
-  })  : ops = ops ?? ["add"],
-        tables = tables ?? [2, 3, 4, 5],
-        kgOps = kgOps ?? ["add", "sub"];
+  }) : ops = ops ?? ["add"],
+       tables = tables ?? [2, 3, 4, 5],
+       kgOps = kgOps ?? ["add", "sub"];
 
   int get secondsPerQuestion => kDiffSeconds[difficulty] ?? 20;
 
   factory Settings.fromJson(Map<String, dynamic> s) {
     final d = Settings();
-    List<T> listOf<T>(Object? v) => v is List ? v.whereType<T>().toList() : <T>[];
-    final ops = listOf<String>(s["ops"]).where(["add", "sub", "mul", "div", "time"].contains).toList();
-    final kgOps = listOf<String>(s["kgOps"]).where(["add", "sub"].contains).toList();
-    T oneOf<T>(Object? v, List<T> allowed, T fallback) => allowed.contains(v) ? v as T : fallback;
+    List<T> listOf<T>(Object? v) =>
+        v is List ? v.whereType<T>().toList() : <T>[];
+    final ops = listOf<String>(
+      s["ops"],
+    ).where(["add", "sub", "mul", "div", "time"].contains).toList();
+    final kgOps = listOf<String>(
+      s["kgOps"],
+    ).where(["add", "sub"].contains).toList();
+    T oneOf<T>(Object? v, List<T> allowed, T fallback) =>
+        allowed.contains(v) ? v as T : fallback;
     return Settings(
       lang: oneOf(s["lang"], kLanguages, d.lang),
       mode: oneOf(s["mode"], ["test", "kg", "tables"], d.mode),
       ops: ops.isNotEmpty ? ops : d.ops,
       range: oneOf(s["range"], kRangeOptions, d.range),
       tables: s["tables"] is List
-          ? listOf<int>(s["tables"]).where((n) => n >= kTableMin && n <= kTableMax).toList()
+          ? listOf<int>(
+              s["tables"],
+            ).where((n) => n >= kTableMin && n <= kTableMax).toList()
           : d.tables,
       count: oneOf(s["count"], kCountOptions, d.count),
       factorMax: s["factorMax"] == 12 ? 12 : 10,
@@ -88,34 +96,38 @@ class Settings {
       kgSize: oneOf(s["kgSize"], ["s", "m", "l"], d.kgSize),
       sound: s["sound"] != false,
       autoSubmit: s["autoSubmit"] != false,
-      difficulty: oneOf(s["difficulty"], ["easy", "medium", "hard"], d.difficulty),
+      difficulty: oneOf(s["difficulty"], [
+        "easy",
+        "medium",
+        "hard",
+      ], d.difficulty),
       gameScore: oneOf(s["gameScore"], kGameScoreOptions, d.gameScore),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        "lang": lang,
-        "mode": mode,
-        "ops": ops,
-        "range": range,
-        "tables": tables,
-        "count": count,
-        "factorMax": factorMax,
-        "timeLevel": timeLevel,
-        "clockMode": clockMode,
-        "clockTask": clockTask,
-        "timeInput": timeInput,
-        "qFormat": qFormat,
-        "kgRange": kgRange,
-        "kgOps": kgOps,
-        "kgStyle": kgStyle,
-        "kgTimer": kgTimer,
-        "kgSize": kgSize,
-        "sound": sound,
-        "autoSubmit": autoSubmit,
-        "difficulty": difficulty,
-        "gameScore": gameScore,
-      };
+    "lang": lang,
+    "mode": mode,
+    "ops": ops,
+    "range": range,
+    "tables": tables,
+    "count": count,
+    "factorMax": factorMax,
+    "timeLevel": timeLevel,
+    "clockMode": clockMode,
+    "clockTask": clockTask,
+    "timeInput": timeInput,
+    "qFormat": qFormat,
+    "kgRange": kgRange,
+    "kgOps": kgOps,
+    "kgStyle": kgStyle,
+    "kgTimer": kgTimer,
+    "kgSize": kgSize,
+    "sound": sound,
+    "autoSubmit": autoSubmit,
+    "difficulty": difficulty,
+    "gameScore": gameScore,
+  };
 
   Settings copy() => Settings.fromJson(toJson());
 }

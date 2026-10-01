@@ -42,7 +42,8 @@ class WeakMemory {
 class HighScores {
   static const _key = "mathstars-best";
 
-  static int bestFor(String mode) => (Storage.getJson(_key)?[mode] as int?) ?? 0;
+  static int bestFor(String mode) =>
+      (Storage.getJson(_key)?[mode] as int?) ?? 0;
 
   /// Saves [score] if it beats the stored best; returns true for a new record.
   static bool recordIfBest(String mode, int score) {
@@ -69,13 +70,28 @@ class MistakeLog {
 
   static List<Mistake> load() => (Storage.getJsonList(_key) ?? [])
       .whereType<Map<String, dynamic>>()
-      .map((m) => Mistake("${m["prompt"]}", "${m["correct"]}", m["given"] as String?, (m["ts"] as int?) ?? 0))
+      .map(
+        (m) => Mistake(
+          "${m["prompt"]}",
+          "${m["correct"]}",
+          m["given"] as String?,
+          (m["ts"] as int?) ?? 0,
+        ),
+      )
       .toList();
 
   static void add(String prompt, String correct, String? given) {
     final list = Storage.getJsonList(_key) ?? [];
-    list.add({"prompt": prompt, "correct": correct, "given": given, "ts": DateTime.now().millisecondsSinceEpoch});
-    Storage.setJson(_key, list.length > 200 ? list.sublist(list.length - 200) : list);
+    list.add({
+      "prompt": prompt,
+      "correct": correct,
+      "given": given,
+      "ts": DateTime.now().millisecondsSinceEpoch,
+    });
+    Storage.setJson(
+      _key,
+      list.length > 200 ? list.sublist(list.length - 200) : list,
+    );
   }
 
   static void clear() => Storage.setJson(_key, []);

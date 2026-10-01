@@ -71,7 +71,9 @@ class QuestionGenerator {
         ..dual = true
         ..answer2 = (ansH + 12) * 100 + m;
     }
-    var ansH = mode == "24" ? (((h + shift) % 24) + 24) % 24 : (((h + shift) % 12) + 12) % 12;
+    var ansH = mode == "24"
+        ? (((h + shift) % 24) + 24) % 24
+        : (((h + shift) % 12) + 12) % 12;
     if (mode != "24" && ansH == 0) ansH = 12; // 12-hour faces read 12, never 0
     return Question(op: "time", a: h, b: m, answer: ansH * 100 + m)
       ..shift = shift
@@ -84,9 +86,15 @@ class QuestionGenerator {
       final mode = cfg.clockMode;
       final m = cfg.timeLevel == 1 ? pick([0, 15, 30, 45]) : rand(0, 11) * 5;
       final task = cfg.clockTask;
-      final shift = (task == "shift" || (task == "both" && coin())) ? rand(1, 11) * (coin() ? 1 : -1) : 0;
+      final shift = (task == "shift" || (task == "both" && coin()))
+          ? rand(1, 11) * (coin() ? 1 : -1)
+          : 0;
       // dual skips 12 so both answers stay distinct and < 24; 24h includes midnight
-      final h = mode == "dual" ? rand(0, 11) : mode == "24" ? rand(0, 23) : rand(1, 12);
+      final h = mode == "dual"
+          ? rand(0, 11)
+          : mode == "24"
+          ? rand(0, 23)
+          : rand(1, 12);
       return makeTimeQuestion(h, m, shift, mode);
     }
     if (op == "add") {
@@ -137,24 +145,38 @@ class QuestionGenerator {
     if (m != null) {
       final n = int.parse(m[1]!), k = int.parse(m[2]!);
       final ops = ["mul", "div"].where(cfg.ops.contains).toList();
-      if (ops.isEmpty || !cfg.tables.contains(n) || k > cfg.factorMax) return null;
+      if (ops.isEmpty || !cfg.tables.contains(n) || k > cfg.factorMax) {
+        return null;
+      }
       return _fact(pick(ops), n, k);
     }
     m = RegExp(r"^(add|sub|time):(\d+):(\d+)(?::(-?\d+))?$").firstMatch(key);
     if (m == null || !cfg.ops.contains(m[1])) return null;
     final op = m[1]!, a = int.parse(m[2]!), b = int.parse(m[3]!);
-    if (op == "add") return a + b <= cfg.range ? Question(op: op, a: a, b: b, answer: a + b) : null;
-    if (op == "sub") return a <= cfg.range && b < a ? Question(op: op, a: a, b: b, answer: a - b) : null;
+    if (op == "add") {
+      return a + b <= cfg.range
+          ? Question(op: op, a: a, b: b, answer: a + b)
+          : null;
+    }
+    if (op == "sub") {
+      return a <= cfg.range && b < a
+          ? Question(op: op, a: a, b: b, answer: a - b)
+          : null;
+    }
     if (cfg.timeLevel == 1 && b % 15 != 0) return null;
     final shift = m[4] != null ? int.parse(m[4]!) : 0;
     // only bring back the kind of clock question this quiz asks
-    if (shift != 0 ? cfg.clockTask == "read" : cfg.clockTask == "shift") return null;
+    if (shift != 0 ? cfg.clockTask == "read" : cfg.clockTask == "shift") {
+      return null;
+    }
     if (cfg.clockMode == "dual") {
       final base = a > 12 ? a - 12 : a;
       if (base < 0 || base > 11) return null;
       return makeTimeQuestion(base, b, shift, "dual");
     }
-    if (cfg.clockMode != "24" && (a < 1 || a > 12)) return null; // 12-hour faces never show 0
+    if (cfg.clockMode != "24" && (a < 1 || a > 12)) {
+      return null; // 12-hour faces never show 0
+    }
     return makeTimeQuestion(a, b, shift, cfg.clockMode);
   }
 
@@ -178,7 +200,8 @@ class QuestionGenerator {
       final tables = [...s.tables]..sort();
       final qs = <Question>[
         for (final n in tables)
-          for (var k = 1; k <= s.factorMax; k++) Question(op: "mul", a: n, b: k, answer: n * k, fa: n, fb: k),
+          for (var k = 1; k <= s.factorMax; k++)
+            Question(op: "mul", a: n, b: k, answer: n * k, fa: n, fb: k),
       ];
       final seen = <String>{};
       weak.forEach((key, _) {
@@ -194,7 +217,9 @@ class QuestionGenerator {
 
     final recent = <String>[];
     if (s.mode == "kg") {
-      final range = s.kgStyle == "shapes" ? min(s.kgRange, kKgShapesMax) : s.kgRange;
+      final range = s.kgStyle == "shapes"
+          ? min(s.kgRange, kKgShapesMax)
+          : s.kgRange;
       final cfg = QuizConfig(ops: [...s.kgOps], range: range);
       return List.generate(s.count, (_) {
         final q = generate(cfg, recent)
@@ -214,15 +239,15 @@ class QuestionGenerator {
   }
 
   static QuizConfig quizConfigFor(Settings s) => QuizConfig(
-        ops: [...s.ops],
-        range: s.range,
-        tables: [...s.tables]..sort(),
-        factorMax: s.factorMax,
-        timeLevel: s.timeLevel,
-        clockMode: s.clockMode,
-        clockTask: s.clockTask,
-        qFormat: s.qFormat,
-      );
+    ops: [...s.ops],
+    range: s.range,
+    tables: [...s.tables]..sort(),
+    factorMax: s.factorMax,
+    timeLevel: s.timeLevel,
+    clockMode: s.clockMode,
+    clockTask: s.clockTask,
+    qFormat: s.qFormat,
+  );
 }
 
 /// Convenience used by the app: questions for [s] using the saved weak list.
